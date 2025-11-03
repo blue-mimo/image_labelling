@@ -1,0 +1,190 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Image Labeling Application - S3 bucket with Lambda function for automatic image labeling using Amazon Rekognition'
+
+Resources:
+  # S3 Bucket for storing images and labels
+  ImageBucket:
+    Type: AWS::S3::Bucket
+    DependsOn: LambdaInvokePermission
+    Properties:
+      BucketName: bluestone-image-labeling-a08324be2c5f
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt LabelImageFunction.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: uploads/
+                  - Name: suffix
+                    Value: .jpg
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt LabelImageFunction.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: uploads/
+                  - Name: suffix
+                    Value: .png
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt LabelImageFunction.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: uploads/
+                  - Name: suffix
+                    Value: .jpeg
+
+  # IAM Role for Lambda Function
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3AndRekognitionAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: 'arn:aws:s3:::bluestone-image-labeling-a08324be2c5f/*'
+              - Effect: Allow
+                Action:
+                  - rekognition:DetectLabels
+                Resource: '*'
+
+  # Lambda Function for Image Labeling
+  LabelImageFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: bluestone_label_image
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      MemorySize: 512
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import logging
+          from datetime import datetime
+          from urllib.parse import unquote_plus
+          
+          # Initialize AWS clients
+          s3_client = boto3.client('s3')
+          rekognition_client = boto3.client('rekognition')
+          
+          # Configure logging
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          
+          def lambda_handler(event, context):
+              """
+              Lambda function to label images using Amazon Rekognition.
+              Triggered when an image is uploaded to the S3 bucket.
+              """
+              try:
+                  # Parse the S3 event
+                  for record in event['Records']:
+                      bucket = record['s3']['bucket']['name']
+                      key = unquote_plus(record['s3']['object']['key'])
+                      
+                      logger.info(f'Processing image: {key} from bucket: {bucket}')
+                      
+                      # Call Amazon Rekognition to detect labels
+                      response = rekognition_client.detect_labels(
+                          Image={
+                              'S3Object': {
+                                  'Bucket': bucket,
+                                  'Name': key
+                              }
+                          },
+                          MaxLabels=10,
+                          MinConfidence=75
+                      )
+                      
+                      # Extract labels from the response
+                      labels = response['Labels']
+                      logger.info(f'Detected {len(labels)} labels')
+                      
+                      # Format the results
+                      results = {
+                          'image': key,
+                          'timestamp': datetime.utcnow().isoformat(),
+                          'labels': [
+                              {
+                                  'name': label['Name'],
+                                  'confidence': round(label['Confidence'], 2)
+                              }
+                              for label in labels
+                          ]
+                      }
+                      
+                      # Save the labels to S3
+                      # Replace uploads/ with labels/ and change extension to .json
+                      label_key = key.replace('uploads/', 'labels/', 1)
+                      label_key = label_key.rsplit('.', 1)[0] + '.json'
+                      
+                      s3_client.put_object(
+                          Bucket=bucket,
+                          Key=label_key,
+                          Body=json.dumps(results, indent=2),
+                          ContentType='application/json'
+                      )
+                      
+                      logger.info(f'Labels saved to: {label_key}')
+                      
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'message': 'Image labeling completed successfully',
+                          'processed_images': len(event['Records'])
+                      })
+                  }
+                  
+              except Exception as e:
+                  logger.error(f'Error processing image: {str(e)}')
+                  raise
+
+  # Permission for S3 to invoke Lambda
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LabelImageFunction
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: 'arn:aws:s3:::bluestone-image-labeling-a08324be2c5f'
+      SourceAccount: !Ref AWS::AccountId
+
+Outputs:
+  BucketName:
+    Description: Name of the S3 bucket for images
+    Value: !Ref ImageBucket
+    Export:
+      Name: ImageLabelingBucketName
+  
+  LambdaFunctionArn:
+    Description: ARN of the Lambda function
+    Value: !GetAtt LabelImageFunction.Arn
+    Export:
+      Name: ImageLabelingLambdaArn
+  
+  LambdaFunctionName:
+    Description: Name of the Lambda function
+    Value: !Ref LabelImageFunction
+    Export:
+      Name: ImageLabelingLambdaName
