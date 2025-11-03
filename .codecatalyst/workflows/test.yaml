@@ -1,0 +1,38 @@
+Name: Test_Image_Labeling
+SchemaVersion: "1.0"
+
+Triggers:
+  - Type: PULLREQUEST
+    Events:
+      - REVISION
+  - Type: MANUAL
+
+Actions:
+  Test:
+    Identifier: aws/build@v1.0.0
+    Environment:
+      Name: testing
+      Connections:
+        - Name: default
+          Role: CodeCatalystWorkflowDevelopmentRole-image-labelling
+    Inputs:
+      Sources:
+        - WorkflowSource
+    Configuration:
+      Steps:
+        - Run: |
+            pip install pytest boto3
+            echo "Running unit tests..."
+            python -m pytest test_lambda_function.py -v
+        - Run: |
+            aws s3 cp ../test_dog_image.jpeg s3://bluestone-image-labeling-a08324be2c5f/uploads/test_dog_image.jpeg
+            sleep 15
+
+            if aws s3 cp s3://bluestone-image-labeling-a08324be2c5f/labels/test_dog_image.json ./test_dog_image-labels.json; then
+              echo "✅ Test passed: Labels generated"
+              cat test_dog_image-labels.json
+              rm test_dog_image-labels.json
+            else
+              echo "❌ Test failed: No labels generated"
+              exit 1
+            fi
