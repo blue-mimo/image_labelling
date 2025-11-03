@@ -6,6 +6,7 @@ An AWS cloud application for automatic image labeling using Amazon Rekognition.
 
 This project provides an AWS CloudFormation template that creates:
 - An S3 bucket (`bluestone-image-labeling-a08324be2c5f`) for storing images and labels
+  - Note: The bucket name uses hyphens instead of underscores because AWS S3 naming requirements only allow lowercase letters, numbers, hyphens, and periods
 - A Lambda function (`bluestone_label_image`) that automatically labels images using Amazon Rekognition
 - Automatic triggering when images are uploaded to the `uploads/` folder in the S3 bucket
 
@@ -28,7 +29,15 @@ This project provides an AWS CloudFormation template that creates:
 - AWS CLI configured with appropriate credentials
 - AWS account with permissions to create CloudFormation stacks, S3 buckets, Lambda functions, and IAM roles
 
-### Deploy the Stack
+### Quick Deployment
+
+Use the provided deployment script:
+
+```bash
+./deploy.sh
+```
+
+Or manually deploy:
 
 ```bash
 aws cloudformation create-stack \
@@ -45,13 +54,31 @@ aws cloudformation describe-stacks --stack-name image-labeling-stack
 
 ### Delete the Stack
 
+Use the cleanup script:
+
 ```bash
+./cleanup.sh
+```
+
+Or manually delete:
+
+```bash
+# First, empty the S3 bucket
+aws s3 rm s3://bluestone-image-labeling-a08324be2c5f --recursive
+
+# Then delete the stack
 aws cloudformation delete-stack --stack-name image-labeling-stack
 ```
 
-Note: You may need to empty the S3 bucket before deletion.
-
 ## Usage
+
+### Using the Test Script
+
+```bash
+./test-upload.sh path/to/your-image.jpg
+```
+
+### Manual Usage
 
 1. Upload an image to the S3 bucket under the `uploads/` folder:
    ```bash
@@ -94,6 +121,10 @@ The Lambda function generates JSON files with the following structure:
 
 - `cloudformation-template.yaml`: CloudFormation template defining all AWS resources
 - `lambda_function.py`: Python code for the Lambda function (also embedded in the template)
+- `test_lambda_function.py`: Unit tests for the Lambda function
+- `deploy.sh`: Script to deploy the CloudFormation stack
+- `cleanup.sh`: Script to clean up and delete the stack
+- `test-upload.sh`: Script to test uploading an image and retrieving labels
 
 ## Configuration
 

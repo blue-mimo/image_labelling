@@ -6,16 +6,32 @@ This function is triggered when an image is uploaded to the S3 bucket.
 import json
 import boto3
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import unquote_plus
-
-# Initialize AWS clients
-s3_client = boto3.client('s3')
-rekognition_client = boto3.client('rekognition')
 
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+# Initialize AWS clients (will be set on first use or can be mocked for testing)
+s3_client = None
+rekognition_client = None
+
+
+def get_s3_client():
+    """Get or create S3 client."""
+    global s3_client
+    if s3_client is None:
+        s3_client = boto3.client('s3')
+    return s3_client
+
+
+def get_rekognition_client():
+    """Get or create Rekognition client."""
+    global rekognition_client
+    if rekognition_client is None:
+        rekognition_client = boto3.client('rekognition')
+    return rekognition_client
 
 
 def lambda_handler(event, context):
@@ -31,6 +47,10 @@ def lambda_handler(event, context):
         dict: Response with status code and message
     """
     try:
+        # Get clients
+        s3 = get_s3_client()
+        rekognition = get_rekognition_client()
+        
         # Parse the S3 event
         for record in event['Records']:
             bucket = record['s3']['bucket']['name']
@@ -39,7 +59,7 @@ def lambda_handler(event, context):
             logger.info(f'Processing image: {key} from bucket: {bucket}')
             
             # Call Amazon Rekognition to detect labels
-            response = rekognition_client.detect_labels(
+            response = rekognition.detect_labels(
                 Image={
                     'S3Object': {
                         'Bucket': bucket,
@@ -57,7 +77,7 @@ def lambda_handler(event, context):
             # Format the results
             results = {
                 'image': key,
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
                 'labels': [
                     {
                         'name': label['Name'],
@@ -72,7 +92,7 @@ def lambda_handler(event, context):
             label_key = key.replace('uploads/', 'labels/', 1)
             label_key = label_key.rsplit('.', 1)[0] + '.json'
             
-            s3_client.put_object(
+            s3.put_object(
                 Bucket=bucket,
                 Key=label_key,
                 Body=json.dumps(results, indent=2),
