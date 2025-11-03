@@ -81,7 +81,7 @@ Resources:
           import json
           import boto3
           import logging
-          from datetime import datetime
+          from datetime import datetime, timezone
           from urllib.parse import unquote_plus
           
           # Initialize AWS clients
@@ -124,7 +124,7 @@ Resources:
                       # Format the results
                       results = {
                           'image': key,
-                          'timestamp': datetime.utcnow().isoformat(),
+                          'timestamp': datetime.now(timezone.utc).isoformat(),
                           'labels': [
                               {
                                   'name': label['Name'],
