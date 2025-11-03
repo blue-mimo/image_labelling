@@ -1,0 +1,30 @@
+Name: Cleanup_Image_Labeling_Stack
+SchemaVersion: "1.0"
+
+Triggers:
+  - Type: MANUAL
+
+Actions:
+  Cleanup:
+    Identifier: aws/build@v1.0.0
+    Environment:
+      Name: production
+      Connections:
+        - Name: default
+          Role: CodeCatalystWorkflowDevelopmentRole-image-labelling
+    Inputs:
+      Sources:
+        - WorkflowSource
+    Configuration:
+      Steps:
+        - Run: |
+            echo "Cleaning up S3 bucket contents..."
+            aws s3 rm s3://bluestone-image-labeling-a08324be2c5f --recursive || echo "Bucket already empty or doesn't exist"
+
+            echo "Deleting CloudFormation stack..."
+            aws cloudformation delete-stack --stack-name image-labeling-stack --region us-east-1
+
+            echo "Waiting for stack deletion to complete..."
+            aws cloudformation wait stack-delete-complete --stack-name image-labeling-stack --region us-east-1
+
+            echo "Cleanup completed successfully!"
