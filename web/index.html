@@ -32,14 +32,14 @@
     </div>
 
     <script>
+        const API_BASE = 'https://your-api-gateway-url.execute-api.us-east-1.amazonaws.com/prod';
         const BUCKET_NAME = 'bluestone-image-labeling-a08324be2c5f';
-        const REGION = 'us-east-1';
         
         let images = [];
         
         async function loadImages() {
             try {
-                const response = await fetch('/api/images');
+                const response = await fetch(`${API_BASE}/images`);
                 images = await response.json();
                 displayImageList();
             } catch (error) {
@@ -62,13 +62,14 @@
                 item.classList.toggle('selected', i === index);
             });
             
-            // Display image
+            // Display image from S3
+            const imageUrl = `https://${BUCKET_NAME}.s3.amazonaws.com/uploads/${imageName}`;
             document.getElementById('imageDisplay').innerHTML = 
-                `<img src="/api/image/${imageName}" class="image-display" style="max-width: 100%;">`;
+                `<img src="${imageUrl}" class="image-display" style="max-width: 100%;">`;
             
             // Load and display labels
             try {
-                const response = await fetch(`/api/labels/${imageName}`);
+                const response = await fetch(`${API_BASE}/labels/${imageName}`);
                 const labels = await response.json();
                 document.getElementById('labelsDisplay').textContent = JSON.stringify(labels, null, 2);
             } catch (error) {

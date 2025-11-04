@@ -9,14 +9,14 @@ from unittest.mock import Mock, patch, MagicMock
 import sys
 
 # Import the lambda function
-import lambda_function
+import process_added_image
 
 
 class TestLambdaFunction(unittest.TestCase):
     """Test cases for the image labeling Lambda function."""
     
-    @patch('lambda_function.get_rekognition_client')
-    @patch('lambda_function.get_s3_client')
+    @patch('process_added_image.get_rekognition_client')
+    @patch('process_added_image.get_s3_client')
     def test_lambda_handler_success(self, mock_get_s3, mock_get_rekognition):
         """Test successful image labeling."""
         # Create mock clients
@@ -51,7 +51,7 @@ class TestLambdaFunction(unittest.TestCase):
         
         # Call the Lambda handler
         context = Mock()
-        response = lambda_function.lambda_handler(event, context)
+        response = process_added_image.lambda_handler(event, context)
         
         # Verify the response
         self.assertEqual(response['statusCode'], 200)
@@ -86,8 +86,8 @@ class TestLambdaFunction(unittest.TestCase):
         self.assertEqual(saved_data['labels'][0]['name'], 'Dog')
         self.assertEqual(saved_data['labels'][0]['confidence'], 98.5)
     
-    @patch('lambda_function.get_rekognition_client')
-    @patch('lambda_function.get_s3_client')
+    @patch('process_added_image.get_rekognition_client')
+    @patch('process_added_image.get_s3_client')
     def test_lambda_handler_with_url_encoded_key(self, mock_get_s3, mock_get_rekognition):
         """Test handling of URL-encoded file names."""
         mock_s3 = Mock()
@@ -113,7 +113,7 @@ class TestLambdaFunction(unittest.TestCase):
         }
         
         context = Mock()
-        response = lambda_function.lambda_handler(event, context)
+        response = process_added_image.lambda_handler(event, context)
         
         # Verify the response is successful
         self.assertEqual(response['statusCode'], 200)
@@ -123,8 +123,8 @@ class TestLambdaFunction(unittest.TestCase):
         saved_data = json.loads(call_args['Body'])
         self.assertEqual(saved_data['image'], 'uploads/my image.jpg')
     
-    @patch('lambda_function.get_rekognition_client')
-    @patch('lambda_function.get_s3_client')
+    @patch('process_added_image.get_rekognition_client')
+    @patch('process_added_image.get_s3_client')
     def test_lambda_handler_multiple_records(self, mock_get_s3, mock_get_rekognition):
         """Test processing multiple images in one event."""
         mock_s3 = Mock()
@@ -156,7 +156,7 @@ class TestLambdaFunction(unittest.TestCase):
         }
         
         context = Mock()
-        response = lambda_function.lambda_handler(event, context)
+        response = process_added_image.lambda_handler(event, context)
         
         # Verify both images were processed
         self.assertEqual(response['statusCode'], 200)

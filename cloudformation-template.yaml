@@ -170,6 +170,176 @@ Resources:
       SourceArn: "arn:aws:s3:::bluestone-image-labeling-a08324be2c5f"
       SourceAccount: !Ref AWS::AccountId
 
+  # Lambda function to list images
+  ListImagesFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: list_images
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+
+          BUCKET_NAME = 'bluestone-image-labeling-a08324be2c5f'
+          s3_client = boto3.client('s3')
+
+          def lambda_handler(event, context):
+              try:
+                  response = s3_client.list_objects_v2(Bucket=BUCKET_NAME, Prefix='uploads/')
+                  keys = [obj["Key"] for obj in response.get("Contents", []) if "Key" in obj]
+                  images = [
+                      key.replace("uploads/", "")
+                      for key in keys
+                      if key != "uploads/" and key.lower().endswith((".jpg", ".jpeg", ".png"))
+                  ]
+                  return {
+                      'statusCode': 200,
+                      'headers': {
+                          'Content-Type': 'application/json',
+                          'Access-Control-Allow-Origin': '*'
+                      },
+                      'body': json.dumps(images)
+                  }
+              except Exception as e:
+                  return {
+                      'statusCode': 500,
+                      'headers': {
+                          'Content-Type': 'application/json',
+                          'Access-Control-Allow-Origin': '*'
+                      },
+                      'body': json.dumps({'error': str(e)})
+                  }
+
+  # Lambda function to get labels
+  GetLabelsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: get_labels
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+
+          BUCKET_NAME = 'bluestone-image-labeling-a08324be2c5f'
+          s3_client = boto3.client('s3')
+
+          def lambda_handler(event, context):
+              try:
+                  filename = event['pathParameters']['filename']
+                  label_filename = filename.rsplit('.', 1)[0] + '.json'
+                  
+                  obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=f'labels/{label_filename}')
+                  labels = json.loads(obj['Body'].read().decode('utf-8'))
+                  
+                  return {
+                      'statusCode': 200,
+                      'headers': {
+                          'Content-Type': 'application/json',
+                          'Access-Control-Allow-Origin': '*'
+                      },
+                      'body': json.dumps(labels)
+                  }
+              except Exception as e:
+                  return {
+                      'statusCode': 404,
+                      'headers': {
+                          'Content-Type': 'application/json',
+                          'Access-Control-Allow-Origin': '*'
+                      },
+                      'body': json.dumps({'error': str(e)})
+                  }
+
+  # API Gateway
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: image-labeling-api
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  # API Gateway Resources
+  ImagesResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: images
+
+  LabelsResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: labels
+
+  LabelsFilenameResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !Ref LabelsResource
+      PathPart: "{filename}"
+
+  # API Gateway Methods
+  ImagesMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ImagesResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListImagesFunction.Arn}/invocations"
+
+  LabelsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref LabelsFilenameResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetLabelsFunction.Arn}/invocations"
+
+  # API Gateway Deployment
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - ImagesMethod
+      - LabelsMethod
+    Properties:
+      RestApiId: !Ref ApiGateway
+      StageName: prod
+
+  # Lambda permissions for API Gateway
+  ListImagesPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ListImagesFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "${ApiGateway}/*/GET/images"
+
+  GetLabelsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetLabelsFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "${ApiGateway}/*/GET/labels/*"
+
   # IAM Role for Amplify
   AmplifyRole:
     Type: AWS::IAM::Role
@@ -215,17 +385,14 @@ Resources:
                 - ./deploy.sh
         frontend:
           phases:
-            preBuild:
-              commands:
-                - cd web
-                - pip install -r requirements.txt
             build:
               commands:
-                - echo "Build completed"
+                - echo "Preparing static web app"
           artifacts:
             baseDirectory: web
             files:
-              - '**/*'
+              - index.html
+              - favicon.ico
 
   # Amplify Branch
   AmplifyBranch:
@@ -259,3 +426,9 @@ Outputs:
     Value: !Sub "https://${AmplifyBranch.BranchName}.${AmplifyApp.DefaultDomain}"
     Export:
       Name: ImageLabelingWebAppUrl
+
+  ApiGatewayUrl:
+    Description: URL of the API Gateway
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
+    Export:
+      Name: ImageLabelingApiUrl
