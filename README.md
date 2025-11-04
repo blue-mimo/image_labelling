@@ -27,23 +27,19 @@ This project provides an AWS CloudFormation template that creates:
 
 ### Prerequisites
 - AWS CLI configured with appropriate credentials
+- AWS SAM CLI installed (`pip install aws-sam-cli`)
 - AWS account with permissions to create CloudFormation stacks, S3 buckets, Lambda functions, and IAM roles
 
 ### Quick Deployment
 
-Use the provided deployment script:
-
 ```bash
-./deploy.sh
+sam deploy --guided
 ```
 
-Or manually deploy:
+For subsequent deployments:
 
 ```bash
-aws cloudformation create-stack \
-  --stack-name image-labeling-stack \
-  --template-body file://cloudformation-template.yaml \
-  --capabilities CAPABILITY_IAM
+sam deploy
 ```
 
 ### Check Deployment Status
@@ -54,47 +50,43 @@ aws cloudformation describe-stacks --stack-name image-labeling-stack
 
 ### Delete the Stack
 
-Use the cleanup script:
-
 ```bash
-./cleanup.sh
+sam delete --stack-name image-labeling-stack
 ```
 
-Or manually delete:
+### Local Development
 
 ```bash
-# First, empty the S3 bucket
-aws s3 rm s3://bluestone-image-labeling-a08324be2c5f --recursive
+# Test API locally
+sam local start-api
 
-# Then delete the stack
-aws cloudformation delete-stack --stack-name image-labeling-stack
+# Test specific Lambda function
+sam local invoke ListImagesFunction
 ```
 
 ## Usage
 
-### Using the Test Script
+### Web Application
+
+After deployment, access the web application via the Amplify URL (shown in stack outputs):
+- View uploaded images
+- See generated labels for each image
+- Upload new images through the S3 bucket
+
+### API Endpoints
+
+- **List Images**: `GET /images`
+- **Get Labels**: `GET /labels/{filename}`
+
+### Manual Upload
 
 ```bash
-./test-upload.sh path/to/your-image.jpg
+# Upload an image
+aws s3 cp your-image.jpg s3://bluestone-image-labeling-a08324be2c5f/uploads/your-image.jpg
+
+# Labels are automatically generated and saved to:
+# s3://bluestone-image-labeling-a08324be2c5f/labels/your-image.json
 ```
-
-### Manual Usage
-
-1. Upload an image to the S3 bucket under the `uploads/` folder:
-   ```bash
-   aws s3 cp your-image.jpg s3://bluestone-image-labeling-a08324be2c5f/uploads/your-image.jpg
-   ```
-
-2. The Lambda function will automatically process the image and save labels to:
-   ```
-   s3://bluestone-image-labeling-a08324be2c5f/labels/your-image.json
-   ```
-
-3. Retrieve the labels:
-   ```bash
-   aws s3 cp s3://bluestone-image-labeling-a08324be2c5f/labels/your-image.json ./labels.json
-   cat labels.json
-   ```
 
 ## Label Output Format
 
@@ -119,12 +111,16 @@ The Lambda function generates JSON files with the following structure:
 
 ## Files
 
-- `cloudformation-template.yaml`: CloudFormation template defining all AWS resources
-- `lambda_function.py`: Python code for the Lambda function (also embedded in the template)
-- `test_lambda_function.py`: Unit tests for the Lambda function
-- `deploy.sh`: Script to deploy the CloudFormation stack
-- `cleanup.sh`: Script to clean up and delete the stack
-- `test-upload.sh`: Script to test uploading an image and retrieving labels
+- `template.yaml`: AWS SAM template defining all AWS resources
+- `lambda/`: Directory containing Lambda function code
+  - `process_added_image.py`: Processes uploaded images with Rekognition
+  - `list_images.py`: Lists images from S3 uploads folder
+  - `get_labels.py`: Retrieves labels for specific images
+  - `test_*.py`: Unit tests for Lambda functions
+- `web/`: Web application files
+  - `index.html`: Frontend interface
+  - `config.js`: Configuration file (updated during build)
+- `.codecatalyst/`: CodeCatalyst CI/CD workflows
 
 ## Configuration
 
