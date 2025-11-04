@@ -1,0 +1,232 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: "Image Labeling Application - S3 bucket with Lambda functions for automatic image labeling using Amazon Rekognition"
+
+Globals:
+  Function:
+    Runtime: python3.11
+    Timeout: 60
+    Environment:
+      Variables:
+        BUCKET_NAME: bluestone-image-labeling-a08324be2c5f
+
+Resources:
+  # S3 Bucket for storing images and labels
+  ImageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: bluestone-image-labeling-a08324be2c5f
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt ProcessAddedImageFunction.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: uploads/
+                  - Name: suffix
+                    Value: .jpg
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt ProcessAddedImageFunction.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: uploads/
+                  - Name: suffix
+                    Value: .png
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt ProcessAddedImageFunction.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: uploads/
+                  - Name: suffix
+                    Value: .jpeg
+
+  # IAM Role for Lambda Functions
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3AndRekognitionAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "${ImageBucket.Arn}/*"
+                  - !GetAtt ImageBucket.Arn
+              - Effect: Allow
+                Action:
+                  - rekognition:DetectLabels
+                Resource: "*"
+
+  # SAM Lambda Functions
+  ProcessAddedImageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: bluestone_label_image
+      CodeUri: lambda/
+      Handler: process_added_image.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      MemorySize: 512
+
+  ListImagesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: list_images
+      CodeUri: lambda/
+      Handler: list_images.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /images
+            Method: GET
+
+  GetLabelsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: get_labels
+      CodeUri: lambda/
+      Handler: get_labels.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /labels/{filename}
+            Method: GET
+
+  # API Gateway
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: image-labeling-api
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+
+  # Permission for S3 to invoke Lambda
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ProcessAddedImageFunction
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: "arn:aws:s3:::bluestone-image-labeling-a08324be2c5f"
+      SourceAccount: !Ref AWS::AccountId
+
+  # IAM Role for Amplify
+  AmplifyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: amplify.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AmplifyS3Access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "${ImageBucket.Arn}/*"
+                  - !GetAtt ImageBucket.Arn
+
+  # Amplify App
+  AmplifyApp:
+    Type: AWS::Amplify::App
+    Properties:
+      Name: image-labeling-viewer
+      Repository: https://github.com/blue-mimo/image_labelling.git
+      AccessToken: "{{resolve:secretsmanager:arn:aws:secretsmanager:us-east-1:509219055438:secret:image-labelling-github-token-UKPANA:SecretString:token}}"
+      IAMServiceRole: !GetAtt AmplifyRole.Arn
+      EnvironmentVariables:
+        - Name: BUCKET_NAME
+          Value: !Ref ImageBucket
+      BuildSpec: |
+        version: 1
+        backend:
+          phases:
+            build:
+              commands:
+                - chmod +x deploy.sh
+                - ./deploy.sh
+        frontend:
+          phases:
+            build:
+              commands:
+                - echo "Preparing static web app"
+          artifacts:
+            baseDirectory: web
+            files:
+              - index.html
+              - favicon.ico
+
+  # Amplify Branch
+  AmplifyBranch:
+    Type: AWS::Amplify::Branch
+    Properties:
+      AppId: !GetAtt AmplifyApp.AppId
+      BranchName: main
+      EnableAutoBuild: true
+
+Outputs:
+  BucketName:
+    Description: Name of the S3 bucket for images
+    Value: !Ref ImageBucket
+    Export:
+      Name: ImageLabelingBucketName
+
+  LambdaFunctionArn:
+    Description: ARN of the Lambda function
+    Value: !GetAtt ProcessAddedImageFunction.Arn
+    Export:
+      Name: ImageLabelingLambdaArn
+
+  LambdaFunctionName:
+    Description: Name of the Lambda function
+    Value: !Ref ProcessAddedImageFunction
+    Export:
+      Name: ImageLabelingLambdaName
+
+  AmplifyAppUrl:
+    Description: URL of the Amplify web application
+    Value: !Sub "https://${AmplifyBranch.BranchName}.${AmplifyApp.DefaultDomain}"
+    Export:
+      Name: ImageLabelingWebAppUrl
+
+  ApiGatewayUrl:
+    Description: URL of the API Gateway
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
+    Export:
+      Name: ImageLabelingApiUrl
