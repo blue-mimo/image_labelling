@@ -52,7 +52,7 @@ Resources:
   ProcessAddedImageFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: bluestone_label_image
+      FunctionName: process_added_image
       CodeUri: lambda/
       Handler: process_added_image.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn

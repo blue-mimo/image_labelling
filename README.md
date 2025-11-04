@@ -7,7 +7,7 @@ An AWS cloud application for automatic image labeling using Amazon Rekognition.
 This project provides an AWS CloudFormation template that creates:
 - An S3 bucket (`bluestone-image-labeling-a08324be2c5f`) for storing images and labels
   - Note: The bucket name uses hyphens instead of underscores because AWS S3 naming requirements only allow lowercase letters, numbers, hyphens, and periods
-- A Lambda function (`bluestone_label_image`) that automatically labels images using Amazon Rekognition
+- A Lambda function (`process_added_image`) that automatically labels images using Amazon Rekognition
 - Automatic triggering when images are uploaded to the `uploads/` folder in the S3 bucket
 
 ## Architecture
