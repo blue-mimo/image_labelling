@@ -31,9 +31,10 @@
         </div>
     </div>
 
+    <script src="config.js"></script>
     <script>
-        const API_BASE = 'https://your-api-gateway-url.execute-api.us-east-1.amazonaws.com/prod';
-        const BUCKET_NAME = 'bluestone-image-labeling-a08324be2c5f';
+        const API_BASE = window.APP_CONFIG.API_BASE;
+        const BUCKET_NAME = window.APP_CONFIG.BUCKET_NAME;
         
         let images = [];
         

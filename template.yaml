@@ -173,23 +173,22 @@ Resources:
       EnvironmentVariables:
         - Name: BUCKET_NAME
           Value: !Ref ImageBucket
+        - Name: API_URL
+          Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
       BuildSpec: |
         version: 1
-        backend:
-          phases:
-            build:
-              commands:
-                - chmod +x deploy.sh
-                - ./deploy.sh
         frontend:
           phases:
             build:
               commands:
-                - echo "Preparing static web app"
+                - cd web
+                - sed -i "s|https://api-gateway-placeholder|$API_URL|g" config.js
+                - sed -i "s|bluestone-image-labeling-a08324be2c5f|$BUCKET_NAME|g" config.js
           artifacts:
             baseDirectory: web
             files:
               - index.html
+              - config.js
               - favicon.ico
 
   # Amplify Branch
