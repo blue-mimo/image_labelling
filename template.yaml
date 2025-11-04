@@ -16,7 +16,13 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: bluestone-image-labeling-a08324be2c5f
-      NotificationConfiguration:
+
+  # S3 Bucket Notification
+  BucketNotification:
+    Type: AWS::S3::BucketNotification
+    DependsOn: LambdaInvokePermission
+    Properties:
+      Bucket: !Ref ImageBucket
         LambdaConfigurations:
           - Event: s3:ObjectCreated:*
             Function: !GetAtt ProcessAddedImageFunction.Arn
