@@ -57,6 +57,43 @@ Resources:
       Handler: process_added_image.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       MemorySize: 512
+      Events:
+        S3UploadEvent:
+          Type: S3
+          Properties:
+            Bucket: !Ref ImageBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: uploads/
+                  - Name: suffix
+                    Value: .jpg
+        S3UploadEventPng:
+          Type: S3
+          Properties:
+            Bucket: !Ref ImageBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: uploads/
+                  - Name: suffix
+                    Value: .png
+        S3UploadEventJpeg:
+          Type: S3
+          Properties:
+            Bucket: !Ref ImageBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: uploads/
+                  - Name: suffix
+                    Value: .jpeg
 
   ListImagesFunction:
     Type: AWS::Serverless::Function
@@ -99,15 +136,7 @@ Resources:
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
 
-  # Permission for S3 to invoke Lambda
-  LambdaInvokePermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref ProcessAddedImageFunction
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceArn: "arn:aws:s3:::bluestone-image-labeling-a08324be2c5f"
-      SourceAccount: !Ref AWS::AccountId
+
 
   # IAM Role for Amplify
   AmplifyRole:
