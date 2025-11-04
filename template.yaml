@@ -23,34 +23,34 @@ Resources:
     DependsOn: LambdaInvokePermission
     Properties:
       Bucket: !Ref ImageBucket
-        LambdaConfigurations:
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt ProcessAddedImageFunction.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: uploads/
-                  - Name: suffix
-                    Value: .jpg
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt ProcessAddedImageFunction.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: uploads/
-                  - Name: suffix
-                    Value: .png
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt ProcessAddedImageFunction.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: uploads/
-                  - Name: suffix
-                    Value: .jpeg
+      LambdaConfigurations:
+        - Event: s3:ObjectCreated:*
+          Function: !GetAtt ProcessAddedImageFunction.Arn
+          Filter:
+            S3Key:
+              Rules:
+                - Name: prefix
+                  Value: uploads/
+                - Name: suffix
+                  Value: .jpg
+        - Event: s3:ObjectCreated:*
+          Function: !GetAtt ProcessAddedImageFunction.Arn
+          Filter:
+            S3Key:
+              Rules:
+                - Name: prefix
+                  Value: uploads/
+                - Name: suffix
+                  Value: .png
+        - Event: s3:ObjectCreated:*
+          Function: !GetAtt ProcessAddedImageFunction.Arn
+          Filter:
+            S3Key:
+              Rules:
+                - Name: prefix
+                  Value: uploads/
+                - Name: suffix
+                  Value: .jpeg
 
   # IAM Role for Lambda Functions
   LambdaExecutionRole:
