@@ -1,5 +1,5 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Image Labeling Application - S3 bucket with Lambda function for automatic image labeling using Amazon Rekognition'
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Image Labeling Application - S3 bucket with Lambda function for automatic image labeling using Amazon Rekognition"
 
 Resources:
   # S3 Bucket for storing images and labels
@@ -43,7 +43,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -54,17 +54,17 @@ Resources:
       Policies:
         - PolicyName: S3AndRekognitionAccess
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - s3:GetObject
                   - s3:PutObject
-                Resource: 'arn:aws:s3:::bluestone-image-labeling-a08324be2c5f/*'
+                Resource: "arn:aws:s3:::bluestone-image-labeling-a08324be2c5f/*"
               - Effect: Allow
                 Action:
                   - rekognition:DetectLabels
-                Resource: '*'
+                Resource: "*"
 
   # Lambda Function for Image Labeling
   LabelImageFunction:
@@ -83,15 +83,15 @@ Resources:
           import logging
           from datetime import datetime, timezone
           from urllib.parse import unquote_plus
-          
+
           # Initialize AWS clients
           s3_client = boto3.client('s3')
           rekognition_client = boto3.client('rekognition')
-          
+
           # Configure logging
           logger = logging.getLogger()
           logger.setLevel(logging.INFO)
-          
+
           def lambda_handler(event, context):
               """
               Lambda function to label images using Amazon Rekognition.
@@ -167,8 +167,73 @@ Resources:
       FunctionName: !Ref LabelImageFunction
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
-      SourceArn: 'arn:aws:s3:::bluestone-image-labeling-a08324be2c5f'
+      SourceArn: "arn:aws:s3:::bluestone-image-labeling-a08324be2c5f"
       SourceAccount: !Ref AWS::AccountId
+
+  # IAM Role for Amplify
+  AmplifyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: amplify.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AmplifyS3Access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "${ImageBucket.Arn}/*"
+                  - !GetAtt ImageBucket.Arn
+
+  # Amplify App
+  AmplifyApp:
+    Type: AWS::Amplify::App
+    Properties:
+      Name: image-labeling-viewer
+      Repository: https://github.com/blue-mimo/image_labelling.git
+      AccessToken: "{{resolve:secretsmanager:arn:aws:secretsmanager:us-east-1:509219055438:secret:image-labelling-github-token-UKPANA:SecretString:token}}"
+      IAMServiceRole: !GetAtt AmplifyRole.Arn
+      EnvironmentVariables:
+        - Name: BUCKET_NAME
+          Value: !Ref ImageBucket
+      BuildSpec: |
+        version: 1
+        backend:
+          phases:
+            build:
+              commands:
+                - chmod +x deploy.sh
+                - ./deploy.sh
+        frontend:
+          phases:
+            preBuild:
+              commands:
+                - cd web
+                - pip install -r requirements.txt
+            build:
+              commands:
+                - echo "Build completed"
+          artifacts:
+            baseDirectory: web
+            files:
+              - '**/*'
+
+  # Amplify Branch
+  AmplifyBranch:
+    Type: AWS::Amplify::Branch
+    Properties:
+      AppId: !GetAtt AmplifyApp.AppId
+      BranchName: main
+      EnableAutoBuild: true
 
 Outputs:
   BucketName:
@@ -176,15 +241,21 @@ Outputs:
     Value: !Ref ImageBucket
     Export:
       Name: ImageLabelingBucketName
-  
+
   LambdaFunctionArn:
     Description: ARN of the Lambda function
     Value: !GetAtt LabelImageFunction.Arn
     Export:
       Name: ImageLabelingLambdaArn
-  
+
   LambdaFunctionName:
     Description: Name of the Lambda function
     Value: !Ref LabelImageFunction
     Export:
       Name: ImageLabelingLambdaName
+
+  AmplifyAppUrl:
+    Description: URL of the Amplify web application
+    Value: !Sub "https://${AmplifyBranch.BranchName}.${AmplifyApp.DefaultDomain}"
+    Export:
+      Name: ImageLabelingWebAppUrl

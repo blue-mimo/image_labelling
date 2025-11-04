@@ -13,8 +13,23 @@ echo "Stack Name: $STACK_NAME"
 echo "Region: $REGION"
 echo ""
 
-# Check if stack exists
-if aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$REGION" >/dev/null 2>&1; then
+# Function to create stack and wait for completion
+create_stack() {
+    echo "Creating new stack..."
+    aws cloudformation create-stack \
+        --stack-name "$STACK_NAME" \
+        --template-body "file://$TEMPLATE_FILE" \
+        --capabilities CAPABILITY_IAM \
+        --region "$REGION"
+    
+    echo "Waiting for stack creation to complete..."
+    aws cloudformation wait stack-create-complete \
+        --stack-name "$STACK_NAME" \
+        --region "$REGION"
+}
+
+# Function to update stack and wait for completion
+update_stack() {
     echo "Stack exists. Updating stack..."
     aws cloudformation update-stack \
         --stack-name "$STACK_NAME" \
@@ -26,18 +41,27 @@ if aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$REGI
     aws cloudformation wait stack-update-complete \
         --stack-name "$STACK_NAME" \
         --region "$REGION"
+}
+
+# Function to delete stack and wait for completion
+delete_stack() {
+    echo "Stack is in ROLLBACK_COMPLETE state. Deleting and recreating..."
+    aws cloudformation delete-stack --stack-name "$STACK_NAME" --region "$REGION"
+    aws cloudformation wait stack-delete-complete --stack-name "$STACK_NAME" --region "$REGION"
+}
+
+# Check if stack exists and get its status
+STACK_STATUS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$REGION" --query 'Stacks[0].StackStatus' --output text 2>/dev/null)
+
+if [ $? -eq 0 ]; then
+    if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ]; then
+        delete_stack
+        create_stack
+    else
+        update_stack
+    fi
 else
-    echo "Stack does not exist. Creating new stack..."
-    aws cloudformation create-stack \
-        --stack-name "$STACK_NAME" \
-        --template-body "file://$TEMPLATE_FILE" \
-        --capabilities CAPABILITY_IAM \
-        --region "$REGION"
-    
-    echo "Waiting for stack creation to complete..."
-    aws cloudformation wait stack-create-complete \
-        --stack-name "$STACK_NAME" \
-        --region "$REGION"
+    create_stack
 fi
 
 echo ""

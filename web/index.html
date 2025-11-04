@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image Labeling Viewer</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { display: flex; gap: 20px; }
+        .image-list { width: 300px; }
+        .image-item { padding: 10px; border: 1px solid #ddd; margin: 5px 0; cursor: pointer; }
+        .image-item:hover { background: #f0f0f0; }
+        .image-item.selected { background: #007cba; color: white; }
+        .viewer { flex: 1; }
+        .image-display { max-width: 500px; margin-bottom: 20px; }
+        .labels { background: #f5f5f5; padding: 15px; border-radius: 5px; }
+        pre { white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>Image Labeling Viewer</h1>
+    <div class="container">
+        <div class="image-list">
+            <h3>Images</h3>
+            <div id="imageList">Loading...</div>
+        </div>
+        <div class="viewer">
+            <div id="imageDisplay"></div>
+            <div class="labels">
+                <h3>Labels</h3>
+                <pre id="labelsDisplay">Select an image to view labels</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BUCKET_NAME = 'bluestone-image-labeling-a08324be2c5f';
+        const REGION = 'us-east-1';
+        
+        let images = [];
+        
+        async function loadImages() {
+            try {
+                const response = await fetch('/api/images');
+                images = await response.json();
+                displayImageList();
+            } catch (error) {
+                document.getElementById('imageList').innerHTML = 'Error loading images';
+            }
+        }
+        
+        function displayImageList() {
+            const listElement = document.getElementById('imageList');
+            listElement.innerHTML = images.map((image, index) => 
+                `<div class="image-item" onclick="selectImage(${index})">${image}</div>`
+            ).join('');
+        }
+        
+        async function selectImage(index) {
+            const imageName = images[index];
+            
+            // Update selection
+            document.querySelectorAll('.image-item').forEach((item, i) => {
+                item.classList.toggle('selected', i === index);
+            });
+            
+            // Display image
+            document.getElementById('imageDisplay').innerHTML = 
+                `<img src="/api/image/${imageName}" class="image-display" style="max-width: 100%;">`;
+            
+            // Load and display labels
+            try {
+                const response = await fetch(`/api/labels/${imageName}`);
+                const labels = await response.json();
+                document.getElementById('labelsDisplay').textContent = JSON.stringify(labels, null, 2);
+            } catch (error) {
+                document.getElementById('labelsDisplay').textContent = 'No labels found';
+            }
+        }
+        
+        loadImages();
+    </script>
+</body>
+</html>
