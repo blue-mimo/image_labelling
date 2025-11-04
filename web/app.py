@@ -16,7 +16,7 @@ def index():
 
 @app.route("/favicon.ico")
 def favicon():
-    return "", 204
+    return send_file("favicon.ico")
 
 
 @app.route("/api/images")
