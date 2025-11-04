@@ -17,41 +17,6 @@ Resources:
     Properties:
       BucketName: bluestone-image-labeling-a08324be2c5f
 
-  # S3 Bucket Notification
-  BucketNotification:
-    Type: AWS::S3::BucketNotification
-    DependsOn: LambdaInvokePermission
-    Properties:
-      Bucket: !Ref ImageBucket
-      LambdaConfigurations:
-        - Event: s3:ObjectCreated:*
-          Function: !GetAtt ProcessAddedImageFunction.Arn
-          Filter:
-            S3Key:
-              Rules:
-                - Name: prefix
-                  Value: uploads/
-                - Name: suffix
-                  Value: .jpg
-        - Event: s3:ObjectCreated:*
-          Function: !GetAtt ProcessAddedImageFunction.Arn
-          Filter:
-            S3Key:
-              Rules:
-                - Name: prefix
-                  Value: uploads/
-                - Name: suffix
-                  Value: .png
-        - Event: s3:ObjectCreated:*
-          Function: !GetAtt ProcessAddedImageFunction.Arn
-          Filter:
-            S3Key:
-              Rules:
-                - Name: prefix
-                  Value: uploads/
-                - Name: suffix
-                  Value: .jpeg
-
   # IAM Role for Lambda Functions
   LambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -76,8 +41,8 @@ Resources:
                   - s3:PutObject
                   - s3:ListBucket
                 Resource:
-                  - !Sub "${ImageBucket.Arn}/*"
-                  - !GetAtt ImageBucket.Arn
+                  - "arn:aws:s3:::bluestone-image-labeling-a08324be2c5f/*"
+                  - "arn:aws:s3:::bluestone-image-labeling-a08324be2c5f"
               - Effect: Allow
                 Action:
                   - rekognition:DetectLabels
@@ -165,8 +130,8 @@ Resources:
                   - s3:GetObject
                   - s3:ListBucket
                 Resource:
-                  - !Sub "${ImageBucket.Arn}/*"
-                  - !GetAtt ImageBucket.Arn
+                  - "arn:aws:s3:::bluestone-image-labeling-a08324be2c5f/*"
+                  - "arn:aws:s3:::bluestone-image-labeling-a08324be2c5f"
 
   # Amplify App
   AmplifyApp:
