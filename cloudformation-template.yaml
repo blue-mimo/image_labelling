@@ -207,6 +207,12 @@ Resources:
           Value: !Ref ImageBucket
       BuildSpec: |
         version: 1
+        backend:
+          phases:
+            build:
+              commands:
+                - chmod +x deploy.sh
+                - ./deploy.sh
         frontend:
           phases:
             preBuild:
