@@ -46,11 +46,7 @@ def lambda_handler(event, context):
                 },
             }
 
-        logger.debug("Extracting file data from request")
         file_data, filename, file_ext = get_file_name_and_data(event)
-        logger.debug(
-            f"Extracted file: {filename}, extension: {file_ext}, size: {len(file_data)} bytes"
-        )
 
         s3_key = upload_image_to_s3(file_data, filename, file_ext)
 
@@ -149,13 +145,11 @@ def get_file_name_and_data(event):
 
 def decode_request_body(event):
     body = event.get("body", "")
-    is_base64 = event.get("isBase64Encoded", False)
-    logger.debug(f"Body length: {len(body)}, isBase64Encoded: {is_base64}")
 
-    if is_base64:
-        body = base64.b64decode(body)
-    else:
-        body = body.encode("latin1")
+    if "isBase64Encoded" not in event or not event["isBase64Encoded"]:
+        raise HTTPClientError(400, "isBase64Encoded flag needs to be true")
+
+    body = base64.b64decode(body)
 
     logger.debug(f"Decoded body length: {len(body)}")
 

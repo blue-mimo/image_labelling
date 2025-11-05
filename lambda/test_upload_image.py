@@ -71,7 +71,8 @@ class TestUploadImage(unittest.TestCase):
         event = {
             "httpMethod": "POST",
             "headers": {"content-type": "application/json"},
-            "body": "{}",
+            "body": base64.b64encode(b"{}").decode(),
+            "isBase64Encoded": True,
         }
 
         response = lambda_handler(event, {})
@@ -166,7 +167,11 @@ class TestUploadImage(unittest.TestCase):
 
     def test_get_file_name_and_data_invalid_content_type(self):
         """Test invalid content type in get_file_name_and_data"""
-        event = {"headers": {"content-type": "application/json"}, "body": "{}"}
+        event = {
+            "headers": {"content-type": "application/json"},
+            "body": base64.b64encode(b"{}").decode(),
+            "isBase64Encoded": True,
+        }
 
         with self.assertRaises(HTTPClientError) as cm:
             get_file_name_and_data(event)
@@ -176,12 +181,15 @@ class TestUploadImage(unittest.TestCase):
 
     def test_get_file_name_and_data_missing_headers(self):
         """Test missing headers"""
-        event = {"body": ""}
+        event = {"body": "", "isBase64Encoded": False}
 
         with self.assertRaises(HTTPClientError) as cm:
             get_file_name_and_data(event)
 
         self.assertEqual(cm.exception.status_code, 400)
+        self.assertEqual(
+            cm.exception.message, "Content-Type must be multipart/form-data"
+        )
 
     def test_get_file_name_and_data_no_file(self):
         """Test no file in multipart data"""
@@ -223,7 +231,7 @@ class TestUploadImage(unittest.TestCase):
         self.assertIn("File type .txt not allowed", cm.exception.message)
 
     def test_get_file_name_and_data_non_base64(self):
-        """Test non-base64 encoded body"""
+        """Test non-base64 encoded body - should fail"""
         boundary = "boundary123"
         multipart_body = (
             f"--{boundary}\r\n"
@@ -238,10 +246,11 @@ class TestUploadImage(unittest.TestCase):
             "isBase64Encoded": False,
         }
 
-        data, name, ext = get_file_name_and_data(event)
+        with self.assertRaises(HTTPClientError) as cm:
+            get_file_name_and_data(event)
 
-        self.assertEqual(name, "test.jpg")
-        self.assertEqual(ext, ".jpg")
+        self.assertEqual(cm.exception.status_code, 400)
+        self.assertEqual(cm.exception.message, "isBase64Encoded flag needs to be true")
 
     def test_parse_multipart_data_no_boundary(self):
         """Test parse_multipart_data with missing boundary"""
@@ -384,8 +393,8 @@ class TestUploadImage(unittest.TestCase):
         """Test empty body handling"""
         event = {
             "headers": {"content-type": "multipart/form-data; boundary=test"},
-            "body": "",
-            "isBase64Encoded": False,
+            "body": base64.b64encode(b"").decode(),
+            "isBase64Encoded": True,
         }
 
         with self.assertRaises(HTTPClientError) as cm:
@@ -501,7 +510,11 @@ class TestUploadImage(unittest.TestCase):
 
     def test_get_file_name_and_data_missing_content_type_header(self):
         """Test missing content-type header"""
-        event = {"headers": {}, "body": ""}  # No content-type header
+        event = {
+            "headers": {},
+            "body": base64.b64encode(b"").decode(),
+            "isBase64Encoded": True,
+        }  # No content-type header
 
         with self.assertRaises(HTTPClientError) as cm:
             get_file_name_and_data(event)
@@ -523,36 +536,49 @@ class TestUploadImage(unittest.TestCase):
     def test_decode_request_body_base64(self):
         """Test decode_request_body with base64 encoded data"""
         test_data = b"test data"
-        event = {
-            "body": base64.b64encode(test_data).decode(),
-            "isBase64Encoded": True
-        }
-        
+        event = {"body": base64.b64encode(test_data).decode(), "isBase64Encoded": True}
+
         result = decode_request_body(event)
-        
+
         self.assertEqual(result, test_data)
 
     def test_decode_request_body_non_base64(self):
-        """Test decode_request_body with non-base64 data"""
+        """Test decode_request_body with non-base64 data - should fail"""
         test_string = "test data"
-        event = {
-            "body": test_string,
-            "isBase64Encoded": False
-        }
-        
-        result = decode_request_body(event)
-        
-        self.assertEqual(result, test_string.encode("latin1"))
+        event = {"body": test_string, "isBase64Encoded": False}
+
+        with self.assertRaises(HTTPClientError) as cm:
+            decode_request_body(event)
+
+        self.assertEqual(cm.exception.status_code, 400)
+        self.assertEqual(cm.exception.message, "isBase64Encoded flag needs to be true")
 
     def test_decode_request_body_empty(self):
-        """Test decode_request_body with empty body"""
-        event = {
-            "body": "",
-            "isBase64Encoded": False
-        }
-        
+        """Test decode_request_body with empty body - should fail when not base64"""
+        event = {"body": "", "isBase64Encoded": False}
+
+        with self.assertRaises(HTTPClientError) as cm:
+            decode_request_body(event)
+
+        self.assertEqual(cm.exception.status_code, 400)
+        self.assertEqual(cm.exception.message, "isBase64Encoded flag needs to be true")
+
+    def test_decode_request_body_missing_flag(self):
+        """Test decode_request_body with missing isBase64Encoded flag"""
+        event = {"body": "test"}
+
+        with self.assertRaises(HTTPClientError) as cm:
+            decode_request_body(event)
+
+        self.assertEqual(cm.exception.status_code, 400)
+        self.assertEqual(cm.exception.message, "isBase64Encoded flag needs to be true")
+
+    def test_decode_request_body_empty_base64(self):
+        """Test decode_request_body with empty base64 body"""
+        event = {"body": base64.b64encode(b"").decode(), "isBase64Encoded": True}
+
         result = decode_request_body(event)
-        
+
         self.assertEqual(result, b"")
 
 

@@ -165,6 +165,7 @@ Resources:
         - "image/jpeg"
         - "image/png"
         - "image/gif"
+        - "multipart/form-data"
       Cors:
         AllowMethods: "'GET,POST,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
