@@ -6,5 +6,4 @@ frontend:
         - sed -i "s|https://api-gateway-placeholder|$API_URL|g" web/config.js
   artifacts:
     baseDirectory: web
-    files:
-      - "*/**"
+    files: ["*/**"]
