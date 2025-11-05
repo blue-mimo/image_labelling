@@ -63,8 +63,8 @@
                 item.classList.toggle('selected', i === index);
             });
             
-            // Display image from S3
-            const imageUrl = `https://${BUCKET_NAME}.s3.amazonaws.com/uploads/${imageName}`;
+            // Display image via API Gateway
+            const imageUrl = `${API_BASE}/image/${imageName}`;
             document.getElementById('imageDisplay').innerHTML = 
                 `<img src="${imageUrl}" class="image-display" style="max-width: 100%;">`;
             

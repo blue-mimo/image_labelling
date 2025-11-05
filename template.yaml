@@ -125,6 +125,21 @@ Resources:
             Path: /labels/{filename}
             Method: GET
 
+  GetImageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: get_image
+      CodeUri: lambda/
+      Handler: get_image.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /image/{filename}
+            Method: GET
+
   # API Gateway
   ApiGateway:
     Type: AWS::Serverless::Api
@@ -135,8 +150,6 @@ Resources:
         AllowMethods: "'GET,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
-
-
 
   # IAM Role for Amplify
   AmplifyRole:
@@ -175,7 +188,6 @@ Resources:
           Value: !Ref ImageBucket
         - Name: API_URL
           Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
-
 
   # Amplify Branch
   AmplifyBranch:
