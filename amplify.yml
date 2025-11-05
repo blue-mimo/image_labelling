@@ -9,6 +9,4 @@ frontend:
   artifacts:
     baseDirectory: web
     files:
-      - index.html
-      - config.js
-      - favicon.ico
+      - "*/**"
