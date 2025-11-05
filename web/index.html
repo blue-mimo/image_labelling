@@ -133,8 +133,8 @@
                     URL.revokeObjectURL(imageUrl);
                 };
 
-                document.getElementById('imageDisplay').appendChild(img);
                 img.src = imageUrl;
+                document.getElementById('imageDisplay').appendChild(img);
 
             } catch (error) {
                 console.error('Error fetching image:', error);
