@@ -140,6 +140,21 @@ Resources:
             Path: /image/{filename}
             Method: GET
 
+  UploadImageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: upload_image
+      CodeUri: lambda/
+      Handler: upload_image.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /upload_image
+            Method: POST
+
   # API Gateway
   ApiGateway:
     Type: AWS::Serverless::Api
@@ -150,8 +165,9 @@ Resources:
         - "image/jpeg"
         - "image/png"
         - "image/gif"
+        - "multipart/form-data"
       Cors:
-        AllowMethods: "'GET,OPTIONS'"
+        AllowMethods: "'GET,POST,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
 
