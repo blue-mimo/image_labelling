@@ -65,8 +65,22 @@
             
             // Display image via API Gateway
             const imageUrl = `${API_BASE}/image/${imageName}`;
-            document.getElementById('imageDisplay').innerHTML = 
-                `<img src="${imageUrl}" class="image-display" style="max-width: 100%;">`;
+            console.log('Loading image from:', imageUrl);
+            
+            // Clear display first, then create image
+            document.getElementById('imageDisplay').innerHTML = '';
+            
+            const img = document.createElement('img');
+            img.className = 'image-display';
+            img.style.maxWidth = '100%';
+            img.onload = () => console.log('Image loaded successfully');
+            img.onerror = (e) => {
+                console.error('Image failed to load:', e);
+                document.getElementById('imageDisplay').innerHTML = '<p>Failed to load image</p>';
+            };
+            
+            document.getElementById('imageDisplay').appendChild(img);
+            img.src = imageUrl;  // Set src AFTER adding to DOM;
             
             // Load and display labels
             try {
