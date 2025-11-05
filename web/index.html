@@ -108,16 +108,19 @@
         let images = [];
 
         function getConfidenceColor(confidence) {
-            if (confidence <= 50) {
-                const ratio = confidence / 50;
-                const red = 139;
-                const green = Math.round(ratio * 255);
+            if (confidence < 50) {
+                return 'rgb(139, 0, 0)';
+            } else if (confidence <= 75) {
+                const ratio = (confidence - 50) / 25;
+                const red = Math.round(139 * (1 - ratio) + 255 * ratio);
+                const green = Math.round(255 * ratio);
                 return `rgb(${red}, ${green}, 0)`;
             } else {
-                const ratio = (confidence - 50) / 50;
-                const red = Math.round(139 * (1 - ratio));
-                const green = Math.round(100 + ratio * 56);
-                return `rgb(${red}, ${green}, 0)`;
+                const ratio = (confidence - 75) / 25;
+                const red = Math.round(255 * (1 - ratio));
+                const green = 255;
+                const blue = 0;
+                return `rgb(${red}, ${green}, ${blue})`;
             }
         }
 
