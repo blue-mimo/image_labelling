@@ -146,6 +146,10 @@ Resources:
     Properties:
       Name: image-labeling-api
       StageName: prod
+      BinaryMediaTypes:
+        - "image/jpeg"
+        - "image/png"
+        - "image/gif"
       Cors:
         AllowMethods: "'GET,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
