@@ -111,7 +111,7 @@ def get_file_name_and_data(event):
     if event.get("isBase64Encoded", False):
         body = base64.b64decode(body)
     else:
-        body = body.encode("utf-8")
+        body = body.encode("latin1")
 
     # Extract file from multipart data
     file_data, filename = parse_multipart_data(body, content_type)
@@ -151,7 +151,11 @@ def parse_multipart_data(body, content_type):
 
                 # Extract file data (after double CRLF)
                 data_start = part.find(b"\r\n\r\n") + 4
-                file_data = part[data_start:].rstrip(b"\r\n")
+                data_end = part.rfind(b"\r\n")
+                if data_end > data_start:
+                    file_data = part[data_start:data_end]
+                else:
+                    file_data = part[data_start:]
 
                 return file_data, filename
 
