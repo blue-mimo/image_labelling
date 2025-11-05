@@ -124,9 +124,8 @@
             } else {
                 const ratio = (confidence - 75) / 25;
                 const red = Math.round(255 * (1 - ratio));
-                const green = 255;
-                const blue = 0;
-                return `rgb(${red}, ${green}, ${blue})`;
+                const green = Math.round(255 - 128 * ratio);
+                return `rgb(${red}, ${green}, 0)`;
             }
         }
 
