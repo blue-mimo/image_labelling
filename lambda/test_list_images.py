@@ -21,12 +21,19 @@ class TestListImages(unittest.TestCase):
         response = list_images.lambda_handler({}, {})
         
         self.assertEqual(response['statusCode'], 200)
+        self.assertEqual(response['headers']['Content-Type'], 'application/json')
+        self.assertEqual(response['headers']['Access-Control-Allow-Origin'], '*')
         body = json.loads(response['body'])
         self.assertEqual(len(body), 3)
         self.assertIn('image1.jpg', body)
         self.assertIn('image2.png', body)
         self.assertIn('image3.jpeg', body)
         self.assertNotIn('document.pdf', body)
+        
+        mock_s3.list_objects_v2.assert_called_once_with(
+            Bucket='bluestone-image-labeling-a08324be2c5f',
+            Prefix='uploads/'
+        )
     
     @patch('list_images.s3_client')
     def test_list_images_empty(self, mock_s3):

@@ -168,6 +168,190 @@ class TestLambdaFunction(unittest.TestCase):
         
         # Verify S3 put_object was called twice
         self.assertEqual(mock_s3.put_object.call_count, 2)
+    
+    @patch('process_added_image.get_rekognition_client')
+    @patch('process_added_image.get_s3_client')
+    def test_rekognition_error(self, mock_get_s3, mock_get_rekognition):
+        """Test handling of Rekognition errors."""
+        mock_s3 = Mock()
+        mock_rekognition = Mock()
+        mock_get_s3.return_value = mock_s3
+        mock_get_rekognition.return_value = mock_rekognition
+        
+        # Mock Rekognition to raise an exception
+        mock_rekognition.detect_labels.side_effect = Exception('Rekognition service error')
+        
+        event = {
+            'Records': [
+                {
+                    's3': {
+                        'bucket': {'name': 'test-bucket'},
+                        'object': {'key': 'uploads/test-image.jpg'}
+                    }
+                }
+            ]
+        }
+        
+        context = Mock()
+        
+        # Should raise the exception
+        with self.assertRaises(Exception) as cm:
+            process_added_image.lambda_handler(event, context)
+        
+        self.assertIn('Rekognition service error', str(cm.exception))
+        
+        # Verify S3 put_object was not called due to error
+        mock_s3.put_object.assert_not_called()
+    
+    @patch('process_added_image.get_rekognition_client')
+    @patch('process_added_image.get_s3_client')
+    def test_s3_put_error(self, mock_get_s3, mock_get_rekognition):
+        """Test handling of S3 put_object errors."""
+        mock_s3 = Mock()
+        mock_rekognition = Mock()
+        mock_get_s3.return_value = mock_s3
+        mock_get_rekognition.return_value = mock_rekognition
+        
+        mock_rekognition.detect_labels.return_value = {
+            'Labels': [{'Name': 'Test', 'Confidence': 90.0}]
+        }
+        
+        # Mock S3 put_object to raise an exception
+        mock_s3.put_object.side_effect = Exception('S3 access denied')
+        
+        event = {
+            'Records': [
+                {
+                    's3': {
+                        'bucket': {'name': 'test-bucket'},
+                        'object': {'key': 'uploads/test-image.jpg'}
+                    }
+                }
+            ]
+        }
+        
+        context = Mock()
+        
+        # Should raise the exception
+        with self.assertRaises(Exception) as cm:
+            process_added_image.lambda_handler(event, context)
+        
+        self.assertIn('S3 access denied', str(cm.exception))
+    
+    @patch('process_added_image.get_rekognition_client')
+    @patch('process_added_image.get_s3_client')
+    def test_empty_labels_response(self, mock_get_s3, mock_get_rekognition):
+        """Test handling of empty labels from Rekognition."""
+        mock_s3 = Mock()
+        mock_rekognition = Mock()
+        mock_get_s3.return_value = mock_s3
+        mock_get_rekognition.return_value = mock_rekognition
+        
+        # Mock Rekognition response with no labels
+        mock_rekognition.detect_labels.return_value = {'Labels': []}
+        mock_s3.put_object.return_value = {}
+        
+        event = {
+            'Records': [
+                {
+                    's3': {
+                        'bucket': {'name': 'test-bucket'},
+                        'object': {'key': 'uploads/test-image.jpg'}
+                    }
+                }
+            ]
+        }
+        
+        context = Mock()
+        response = process_added_image.lambda_handler(event, context)
+        
+        # Verify successful response even with no labels
+        self.assertEqual(response['statusCode'], 200)
+        
+        # Verify empty labels were saved
+        call_args = mock_s3.put_object.call_args[1]
+        saved_data = json.loads(call_args['Body'])
+        self.assertEqual(len(saved_data['labels']), 0)
+    
+    @patch('process_added_image.get_rekognition_client')
+    @patch('process_added_image.get_s3_client')
+    def test_different_file_extensions(self, mock_get_s3, mock_get_rekognition):
+        """Test processing different image file extensions."""
+        mock_s3 = Mock()
+        mock_rekognition = Mock()
+        mock_get_s3.return_value = mock_s3
+        mock_get_rekognition.return_value = mock_rekognition
+        
+        mock_rekognition.detect_labels.return_value = {
+            'Labels': [{'Name': 'Test', 'Confidence': 90.0}]
+        }
+        mock_s3.put_object.return_value = {}
+        
+        # Test different extensions
+        test_files = ['test.jpg', 'test.jpeg', 'test.png']
+        
+        for filename in test_files:
+            with self.subTest(filename=filename):
+                event = {
+                    'Records': [
+                        {
+                            's3': {
+                                'bucket': {'name': 'test-bucket'},
+                                'object': {'key': f'uploads/{filename}'}
+                            }
+                        }
+                    ]
+                }
+                
+                context = Mock()
+                response = process_added_image.lambda_handler(event, context)
+                
+                self.assertEqual(response['statusCode'], 200)
+                
+                # Verify correct label filename (extension changed to .json)
+                expected_label_key = f'labels/{filename.rsplit(".", 1)[0]}.json'
+                call_args = mock_s3.put_object.call_args[1]
+                self.assertEqual(call_args['Key'], expected_label_key)
+    
+    def test_get_s3_client(self):
+        """Test S3 client creation."""
+        # Reset global client
+        process_added_image.s3_client = None
+        
+        with patch('boto3.client') as mock_boto3:
+            mock_client = Mock()
+            mock_boto3.return_value = mock_client
+            
+            client = process_added_image.get_s3_client()
+            
+            self.assertEqual(client, mock_client)
+            mock_boto3.assert_called_once_with('s3')
+            
+            # Test that subsequent calls return the same client
+            client2 = process_added_image.get_s3_client()
+            self.assertEqual(client, client2)
+            # boto3.client should only be called once
+            self.assertEqual(mock_boto3.call_count, 1)
+    
+    def test_get_rekognition_client(self):
+        """Test Rekognition client creation."""
+        # Reset global client
+        process_added_image.rekognition_client = None
+        
+        with patch('boto3.client') as mock_boto3:
+            mock_client = Mock()
+            mock_boto3.return_value = mock_client
+            
+            client = process_added_image.get_rekognition_client()
+            
+            self.assertEqual(client, mock_client)
+            mock_boto3.assert_called_once_with('rekognition')
+            
+            # Test that subsequent calls return the same client
+            client2 = process_added_image.get_rekognition_client()
+            self.assertEqual(client, client2)
+            # boto3.client should only be called once
+            self.assertEqual(mock_boto3.call_count, 1)
 
 
 if __name__ == '__main__':
