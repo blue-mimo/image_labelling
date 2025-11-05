@@ -57,7 +57,11 @@ def lambda_handler(event, context):
         else:
             logger.warning(f"Unknown image format, first 10 bytes: {image_data[:10]}")
 
-        extension = image_filename[image_filename.rfind(".") :].lower()
+        extension = (
+            image_filename[image_filename.rfind(".") :].lower()
+            if "." in image_filename
+            else ""
+        )
         if not extension:
             raise RuntimeError(
                 "No file extension found, defaulting content type to application/octet-stream"
