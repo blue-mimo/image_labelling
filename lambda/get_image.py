@@ -43,9 +43,34 @@ def lambda_handler(event, context):
         image_data = obj["Body"].read()
         logger.debug(f"Retrieved image data: {len(image_data)} bytes")
 
+        # Validate image data
+        if len(image_data) == 0:
+            raise ValueError("Image file is empty")
+
+        # Check for common image file signatures
+        if image_data[:2] == b"\xff\xd8":  # JPEG
+            logger.debug("Detected JPEG image")
+        elif image_data[:8] == b"\x89PNG\r\n\x1a\n":  # PNG
+            logger.debug("Detected PNG image")
+        elif image_data[:6] in [b"GIF87a", b"GIF89a"]:  # GIF
+            logger.debug("Detected GIF image")
+        else:
+            logger.warning(f"Unknown image format, first 10 bytes: {image_data[:10]}")
+
         extension = image_filename[image_filename.rfind(".") :].lower()
-        content_type = _CONTENT_TYPE_MAP.get(extension, "application/octet-stream")
+        if not extension:
+            raise RuntimeError(
+                "No file extension found, defaulting content type to application/octet-stream"
+            )
+        elif extension not in _CONTENT_TYPE_MAP:
+            raise RuntimeError(f"Unrecognized file extension: {extension}")
+
+        content_type = _CONTENT_TYPE_MAP[extension]
         logger.debug(f"Content type for {extension}: {content_type}")
+
+        # Validate base64 encoding
+        encoded_data = base64.b64encode(image_data).decode("utf-8")
+        logger.debug(f"Base64 encoded length: {len(encoded_data)} characters")
 
         return {
             "statusCode": 200,
@@ -53,7 +78,7 @@ def lambda_handler(event, context):
                 "Content-Type": content_type,
                 "Access-Control-Allow-Origin": "*",
             },
-            "body": base64.b64encode(image_data).decode("utf-8"),
+            "body": encoded_data,
             "isBase64Encoded": True,
         }
     except Exception as e:
