@@ -36,14 +36,22 @@
 
         .viewer {
             flex: 1;
+            display: flex;
+            gap: 20px;
+        }
+
+        .image-container {
+            flex: 0 0 auto;
         }
 
         .image-display {
-            max-width: 500px;
-            margin-bottom: 20px;
+            max-width: 25vw;
+            max-height: 20vh;
+            object-fit: contain;
         }
 
         .labels {
+            flex: 1;
             background: #f5f5f5;
             padding: 15px;
             border-radius: 5px;
@@ -63,7 +71,9 @@
             <div id="imageList">Loading...</div>
         </div>
         <div class="viewer">
-            <div id="imageDisplay"></div>
+            <div class="image-container">
+                <div id="imageDisplay"></div>
+            </div>
             <div class="labels">
                 <h3>Labels</h3>
                 <pre id="labelsDisplay">Select an image to view labels</pre>
@@ -139,7 +149,6 @@
 
                 const img = document.createElement('img');
                 img.className = 'image-display';
-                img.style.maxWidth = '100%';
 
                 img.onload = () => {
                     console.log('Image loaded successfully');
