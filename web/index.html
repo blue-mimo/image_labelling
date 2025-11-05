@@ -108,11 +108,25 @@
 
             try {
                 const response = await fetch(`${API_BASE}/image/${imageName}`);
+                console.log('Response status:', response.status);
+                console.log('Response headers:', [...response.headers.entries()]);
+
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
 
                 const blob = await response.blob();
+                console.log('Blob size:', blob.size, 'Type:', blob.type);
+
+                // Check if blob is empty or wrong type
+                if (blob.size === 0) {
+                    throw new Error('Empty blob received');
+                }
+
+                if (!blob.type.startsWith('image/')) {
+                    throw new Error('Unexpected blob type:', blob.type);
+                }
+
                 const imageUrl = URL.createObjectURL(blob);
 
                 document.getElementById('imageDisplay').innerHTML = '';
