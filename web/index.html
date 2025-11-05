@@ -62,8 +62,20 @@
             border-radius: 5px;
         }
 
-        pre {
-            white-space: pre-wrap;
+        .labels-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .labels-table th, .labels-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .labels-table th {
+            background-color: #e0e0e0;
         }
     </style>
 </head>
@@ -81,7 +93,7 @@
             </div>
             <div class="labels">
                 <h3>Labels</h3>
-                <pre id="labelsDisplay">Select an image to view labels</pre>
+                <div id="labelsDisplay">Select an image to view labels</div>
             </div>
         </div>
     </div>
@@ -92,6 +104,20 @@
         const BUCKET_NAME = window.APP_CONFIG.BUCKET_NAME;
 
         let images = [];
+
+        function getConfidenceColor(confidence) {
+            if (confidence <= 50) {
+                const ratio = confidence / 50;
+                const red = 139;
+                const green = Math.round(ratio * 255);
+                return `rgb(${red}, ${green}, 0)`;
+            } else {
+                const ratio = (confidence - 50) / 50;
+                const red = Math.round(139 * (1 - ratio));
+                const green = Math.round(100 + ratio * 56);
+                return `rgb(${red}, ${green}, 0)`;
+            }
+        }
 
         async function loadImages() {
             try {
@@ -178,10 +204,33 @@
             // Load and display labels
             try {
                 const response = await fetch(`${API_BASE}/labels/${imageName}`);
-                const labels = await response.json();
-                document.getElementById('labelsDisplay').textContent = JSON.stringify(labels, null, 2);
+                const data = await response.json();
+                
+                if (data.labels && data.labels.length > 0) {
+                    const tableHTML = `
+                        <table class="labels-table">
+                            <thead>
+                                <tr>
+                                    <th>Label</th>
+                                    <th>Confidence</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.labels.map(label => `
+                                    <tr>
+                                        <td>${label.name}</td>
+                                        <td style="background-color: ${getConfidenceColor(label.confidence)}">${label.confidence.toFixed(1)}%</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    document.getElementById('labelsDisplay').innerHTML = tableHTML;
+                } else {
+                    document.getElementById('labelsDisplay').innerHTML = 'No labels found';
+                }
             } catch (error) {
-                document.getElementById('labelsDisplay').textContent = 'No labels found';
+                document.getElementById('labelsDisplay').innerHTML = 'No labels found';
             }
         }
 
