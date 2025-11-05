@@ -11,7 +11,7 @@ from urllib.parse import unquote_plus
 
 # Configure logging
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 # Initialize AWS clients (will be set on first use or can be mocked for testing)
 s3_client = None
@@ -46,19 +46,26 @@ def lambda_handler(event, context):
     Returns:
         dict: Response with status code and message
     """
+    logger.debug(f"Lambda invoked with event: {json.dumps(event)}")
+    logger.debug(f"Context: {context}")
+    
     try:
         # Get clients
         s3 = get_s3_client()
         rekognition = get_rekognition_client()
+        logger.debug("AWS clients initialized")
         
         # Parse the S3 event
+        logger.debug(f"Processing {len(event['Records'])} records")
         for record in event['Records']:
             bucket = record['s3']['bucket']['name']
             key = unquote_plus(record['s3']['object']['key'])
             
             logger.info(f'Processing image: {key} from bucket: {bucket}')
+            logger.debug(f'Image size: {record["s3"]["object"].get("size", "unknown")} bytes')
             
             # Call Amazon Rekognition to detect labels
+            logger.debug("Calling Rekognition detect_labels")
             response = rekognition.detect_labels(
                 Image={
                     'S3Object': {
