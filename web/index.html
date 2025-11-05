@@ -63,24 +63,39 @@
                 item.classList.toggle('selected', i === index);
             });
             
-            // Display image via API Gateway
-            const imageUrl = `${API_BASE}/image/${imageName}`;
-            console.log('Loading image from:', imageUrl);
+            // Display image via API Gateway with fetch
+            document.getElementById('imageDisplay').innerHTML = '<p>Loading image...</p>';
             
-            // Clear display first, then create image
-            document.getElementById('imageDisplay').innerHTML = '';
-            
-            const img = document.createElement('img');
-            img.className = 'image-display';
-            img.style.maxWidth = '100%';
-            img.onload = () => console.log('Image loaded successfully');
-            img.onerror = (e) => {
-                console.error('Image failed to load:', e);
+            try {
+                const response = await fetch(`${API_BASE}/image/${imageName}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const blob = await response.blob();
+                const imageUrl = URL.createObjectURL(blob);
+                
+                const img = document.createElement('img');
+                img.className = 'image-display';
+                img.style.maxWidth = '100%';
+                img.onload = () => {
+                    console.log('Image loaded successfully');
+                    URL.revokeObjectURL(imageUrl); // Clean up
+                };
+                img.onerror = (e) => {
+                    console.error('Image failed to display:', e);
+                    document.getElementById('imageDisplay').innerHTML = '<p>Failed to display image</p>';
+                    URL.revokeObjectURL(imageUrl);
+                };
+                
+                document.getElementById('imageDisplay').innerHTML = '';
+                document.getElementById('imageDisplay').appendChild(img);
+                img.src = imageUrl;
+                
+            } catch (error) {
+                console.error('Error fetching image:', error);
                 document.getElementById('imageDisplay').innerHTML = '<p>Failed to load image</p>';
             };
-            
-            document.getElementById('imageDisplay').appendChild(img);
-            img.src = imageUrl;  // Set src AFTER adding to DOM;
             
             // Load and display labels
             try {
