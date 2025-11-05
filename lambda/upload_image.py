@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError
 
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 BUCKET_NAME = "bluestone-image-labeling-a08324be2c5f"
 s3_client = boto3.client("s3")
@@ -154,10 +154,11 @@ def decode_request_body(event):
 
     if is_base64:
         body = base64.b64decode(body)
-        logger.debug(f"Decoded body length: {len(body)}")
     else:
         body = body.encode("latin1")
-        logger.debug(f"Encoded body length: {len(body)}")
+
+    logger.debug(f"Decoded body length: {len(body)}")
+
     return body
 
 

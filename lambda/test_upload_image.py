@@ -8,6 +8,7 @@ from upload_image import (
     parse_multipart_data,
     get_file_name_and_data,
     upload_image_to_s3,
+    decode_request_body,
     HTTPClientError,
 )
 
@@ -490,6 +491,69 @@ class TestUploadImage(unittest.TestCase):
 
         self.assertEqual(data, file_content)
         self.assertEqual(name, filename)
+
+    def test_parse_multipart_data_exception_handling(self):
+        """Test exception handling in parse_multipart_data"""
+        # Test with malformed content-type that will cause split to fail
+        result = parse_multipart_data(b"test", "invalid-content-type")
+
+        self.assertEqual(result, (None, None))
+
+    def test_get_file_name_and_data_missing_content_type_header(self):
+        """Test missing content-type header"""
+        event = {"headers": {}, "body": ""}  # No content-type header
+
+        with self.assertRaises(HTTPClientError) as cm:
+            get_file_name_and_data(event)
+
+        self.assertEqual(cm.exception.status_code, 400)
+        self.assertIn("Content-Type must be multipart/form-data", cm.exception.message)
+
+    def test_parse_multipart_data_no_double_crlf(self):
+        """Test multipart data without proper header/body separator"""
+        boundary = "test"
+        body = b'--test\r\nContent-Disposition: form-data; name="file"; filename="test.jpg"\r\ndata\r\n--test--\r\n'
+
+        result = parse_multipart_data(body, f"multipart/form-data; boundary={boundary}")
+
+        # Should handle missing double CRLF gracefully
+        self.assertIsNotNone(result[0])  # Should still extract some data
+        self.assertEqual(result[1], "test.jpg")
+
+    def test_decode_request_body_base64(self):
+        """Test decode_request_body with base64 encoded data"""
+        test_data = b"test data"
+        event = {
+            "body": base64.b64encode(test_data).decode(),
+            "isBase64Encoded": True
+        }
+        
+        result = decode_request_body(event)
+        
+        self.assertEqual(result, test_data)
+
+    def test_decode_request_body_non_base64(self):
+        """Test decode_request_body with non-base64 data"""
+        test_string = "test data"
+        event = {
+            "body": test_string,
+            "isBase64Encoded": False
+        }
+        
+        result = decode_request_body(event)
+        
+        self.assertEqual(result, test_string.encode("latin1"))
+
+    def test_decode_request_body_empty(self):
+        """Test decode_request_body with empty body"""
+        event = {
+            "body": "",
+            "isBase64Encoded": False
+        }
+        
+        result = decode_request_body(event)
+        
+        self.assertEqual(result, b"")
 
 
 if __name__ == "__main__":
