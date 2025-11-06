@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image Labeler</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { display: flex; gap: 20px; }
+        .image-list { width: 300px; }
+        .image-item { padding: 10px; border: 1px solid #ddd; margin: 5px 0; cursor: pointer; }
+        .image-item:hover { background: #f0f0f0; }
+        .image-item.selected { background: #007cba; color: white; }
+        .viewer { flex: 1; display: flex; gap: 20px; }
+        .image-container { flex: 0 0 25%; }
+        #imageDisplay { width: 100%; min-height: 200px; display: flex; justify-content: center; align-items: center; }
+        .image-display { max-width: 100%; max-height: 20vh; object-fit: contain; }
+        .labels { flex: 0 0 25%; background: #f5f5f5; height: fit-content; }
+        .labels-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .labels-table th, .labels-table td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+        .labels-table th { background-color: #e0e0e0; }
+        .upload-widget { margin-top: 20px; text-align: center; }
+        .upload-button { background: #007cba; color: white; border: none; padding: 15px 30px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        .upload-button:hover { background: #005a8a; }
+        .upload-report { margin-top: 15px; padding: 10px; background: #f0f0f0; border-radius: 5px; display: none; }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    
+    <script src="https://unpkg.com/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js"></script>
+    <script src="config.js"></script>
+    <script>
+        const API_BASE = window.APP_CONFIG.API_BASE;
+        const USER_POOL_ID = window.APP_CONFIG.USER_POOL_ID;
+        const USER_POOL_CLIENT_ID = window.APP_CONFIG.USER_POOL_CLIENT_ID;
+
+        let images = [];
+        let authToken = null;
+        let cognitoUser = null;
+
+        const poolData = { UserPoolId: USER_POOL_ID, ClientId: USER_POOL_CLIENT_ID };
+        const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+
+        function checkAuth() {
+            cognitoUser = userPool.getCurrentUser();
+            if (cognitoUser) {
+                cognitoUser.getSession((err, session) => {
+                    if (err || !session.isValid()) {
+                        showLogin();
+                    } else {
+                        authToken = session.getIdToken().getJwtToken();
+                        showApp();
+                        loadImages();
+                    }
+                });
+            } else {
+                showLogin();
+            }
+        }
+
+        function showLogin() {
+            document.getElementById('app').innerHTML = `
+                <div style="max-width: 400px; margin: 100px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
+                    <h2>Image Labeling - Login</h2>
+                    <form onsubmit="login(event)">
+                        <div style="margin: 10px 0;">
+                            <label>Email:</label><br>
+                            <input type="email" id="email" required style="width: 100%; padding: 8px; margin: 5px 0;">
+                        </div>
+                        <div style="margin: 10px 0;">
+                            <label>Password:</label><br>
+                            <input type="password" id="password" required style="width: 100%; padding: 8px; margin: 5px 0;">
+                        </div>
+                        <button type="submit" style="width: 100%; padding: 10px; background: #007cba; color: white; border: none; border-radius: 3px;">Login</button>
+                    </form>
+                    <div id="loginError" style="color: red; margin-top: 10px;"></div>
+                </div>
+            `;
+        }
+
+        function login(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            const authenticationData = { Username: email, Password: password };
+            const authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails(authenticationData);
+            const userData = { Username: email, Pool: userPool };
+            cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+
+            cognitoUser.authenticateUser(authenticationDetails, {
+                onSuccess: (result) => {
+                    authToken = result.getIdToken().getJwtToken();
+                    showApp();
+                    loadImages();
+                },
+                onFailure: (err) => {
+                    document.getElementById('loginError').textContent = err.message;
+                },
+                newPasswordRequired: () => {
+                    showNewPasswordForm();
+                }
+            });
+        }
+
+        function showNewPasswordForm() {
+            document.getElementById('app').innerHTML = `
+                <div style="max-width: 400px; margin: 100px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
+                    <h2>Set New Password</h2>
+                    <p>Please set a new password for your account.</p>
+                    <form onsubmit="setNewPassword(event)">
+                        <div style="margin: 10px 0;">
+                            <label>New Password:</label><br>
+                            <input type="password" id="newPassword" required style="width: 100%; padding: 8px; margin: 5px 0;">
+                        </div>
+                        <button type="submit" style="width: 100%; padding: 10px; background: #007cba; color: white; border: none; border-radius: 3px;">Set Password</button>
+                    </form>
+                    <div id="passwordError" style="color: red; margin-top: 10px;"></div>
+                </div>
+            `;
+        }
+
+        function setNewPassword(event) {
+            event.preventDefault();
+            const newPassword = document.getElementById('newPassword').value;
+
+            cognitoUser.completeNewPasswordChallenge(newPassword, {}, {
+                onSuccess: (result) => {
+                    authToken = result.getIdToken().getJwtToken();
+                    showApp();
+                    loadImages();
+                },
+                onFailure: (err) => {
+                    document.getElementById('passwordError').textContent = err.message;
+                }
+            });
+        }
+
+        function logout() {
+            if (cognitoUser) cognitoUser.signOut();
+            authToken = null;
+            cognitoUser = null;
+            showLogin();
+        }
+
+        function showApp() {
+            document.getElementById('app').innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h1>Image Labeler</h1>
+                    <button onclick="logout()" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 3px;">Logout</button>
+                </div>
+                <div class="container">
+                    <div class="image-list">
+                        <h3>Images</h3>
+                        <div id="imageList">Loading...</div>
+                    </div>
+                    <div class="viewer">
+                        <div class="image-container">
+                            <div id="imageDisplay"></div>
+                        </div>
+                        <div class="labels">
+                            <div id="labelsDisplay">Select an image to view labels</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="upload-widget">
+                    <button class="upload-button" onclick="triggerFileUpload()">↑ Upload Images</button>
+                    <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.gif" style="display: none;" onchange="handleFileUpload()">
+                    <div id="uploadReport" class="upload-report"></div>
+                </div>
+            `;
+        }
+
+        async function loadImages() {
+            try {
+                const response = await fetch(`${API_BASE}/images`, {
+                    headers: { 'Authorization': authToken }
+                });
+                images = await response.json();
+                displayImageList();
+            } catch (error) {
+                document.getElementById('imageList').innerHTML = 'Error loading images';
+            }
+        }
+
+        function displayImageList() {
+            const listElement = document.getElementById('imageList');
+            listElement.innerHTML = images.map((image, index) =>
+                `<div class="image-item" onclick="selectImage(${index})">${image}</div>`
+            ).join('');
+        }
+
+        async function selectImage(index) {
+            const imageName = images[index];
+            document.querySelectorAll('.image-item').forEach((item, i) => {
+                item.classList.toggle('selected', i === index);
+            });
+
+            document.getElementById('imageDisplay').innerHTML = '<p>Loading image...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/image/${imageName}`, {
+                    headers: {
+                        'Accept': 'image/jpeg,image/png,image/gif',
+                        'Authorization': authToken
+                    }
+                });
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const blob = await response.blob();
+                const imageUrl = URL.createObjectURL(blob);
+                const img = document.createElement('img');
+                img.className = 'image-display';
+                img.src = imageUrl;
+                img.onload = () => URL.revokeObjectURL(imageUrl);
+                
+                document.getElementById('imageDisplay').innerHTML = '';
+                document.getElementById('imageDisplay').appendChild(img);
+            } catch (error) {
+                document.getElementById('imageDisplay').innerHTML = '<p>Failed to load image</p>';
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/labels/${imageName}`, {
+                    headers: { 'Authorization': authToken }
+                });
+                const data = await response.json();
+
+                if (data.labels && data.labels.length > 0) {
+                    const tableHTML = `
+                        <table class="labels-table">
+                            <thead><tr><th>Label</th><th>Confidence</th></tr></thead>
+                            <tbody>
+                                ${data.labels.map(label => `
+                                    <tr>
+                                        <td>${label.name}</td>
+                                        <td>${label.confidence.toFixed(1)}%</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    document.getElementById('labelsDisplay').innerHTML = tableHTML;
+                } else {
+                    document.getElementById('labelsDisplay').innerHTML = 'No labels found';
+                }
+            } catch (error) {
+                document.getElementById('labelsDisplay').innerHTML = 'No labels found';
+            }
+        }
+
+        function triggerFileUpload() {
+            document.getElementById('fileInput').click();
+        }
+
+        async function handleFileUpload() {
+            const fileInput = document.getElementById('fileInput');
+            const files = Array.from(fileInput.files);
+            if (files.length === 0) return;
+
+            const reportDiv = document.getElementById('uploadReport');
+            reportDiv.style.display = 'block';
+            reportDiv.innerHTML = 'Uploading files...';
+
+            let successful = 0;
+            let failed = [];
+
+            for (const file of files) {
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    const response = await fetch(`${API_BASE}/upload_image`, {
+                        method: 'POST',
+                        headers: { 'Authorization': authToken },
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        successful++;
+                    } else {
+                        failed.push(`${file.name}: ${response.status} ${response.statusText}`);
+                    }
+                } catch (error) {
+                    failed.push(`${file.name}: ${error.message}`);
+                }
+            }
+
+            let report = `Upload complete: ${successful} successful`;
+            if (failed.length > 0) {
+                report += `\n\nFailed uploads:\n${failed.join('\n')}`;
+            }
+            reportDiv.innerHTML = `<pre>${report}</pre>`;
+
+            if (successful > 0) loadImages();
+            fileInput.value = '';
+        }
+
+        checkAuth();
+    </script>
+</body>
+</html>

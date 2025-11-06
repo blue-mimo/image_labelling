@@ -155,7 +155,38 @@ Resources:
             Path: /upload_image
             Method: POST
 
-  # API Gateway
+  # Cognito User Pool
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: image-labeling-users
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+
+  # Cognito User Pool Client
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: image-labeling-client
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ADMIN_NO_SRP_AUTH
+        - USER_PASSWORD_AUTH
+      SupportedIdentityProviders:
+        - COGNITO
+
+  # API Gateway with Cognito Authorization
   ApiGateway:
     Type: AWS::Serverless::Api
     Properties:
@@ -170,6 +201,11 @@ Resources:
         AllowMethods: "'GET,POST,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt UserPool.Arn
 
   # IAM Role for Amplify
   AmplifyRole:
@@ -208,6 +244,10 @@ Resources:
           Value: !Ref ImageBucket
         - Name: API_URL
           Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
+        - Name: USER_POOL_ID
+          Value: !Ref UserPool
+        - Name: USER_POOL_CLIENT_ID
+          Value: !Ref UserPoolClient
 
   # Amplify Branch
   AmplifyBranch:
@@ -247,3 +287,15 @@ Outputs:
     Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
     Export:
       Name: ImageLabelingApiUrl
+
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+    Export:
+      Name: ImageLabelingUserPoolId
+
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref UserPoolClient
+    Export:
+      Name: ImageLabelingUserPoolClientId
