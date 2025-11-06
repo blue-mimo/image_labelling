@@ -109,6 +109,8 @@ Resources:
             RestApiId: !Ref ApiGateway
             Path: /images
             Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
 
   GetLabelsFunction:
     Type: AWS::Serverless::Function
@@ -124,6 +126,8 @@ Resources:
             RestApiId: !Ref ApiGateway
             Path: /labels/{filename}
             Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
 
   GetImageFunction:
     Type: AWS::Serverless::Function
@@ -139,6 +143,8 @@ Resources:
             RestApiId: !Ref ApiGateway
             Path: /image/{filename}
             Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
 
   UploadImageFunction:
     Type: AWS::Serverless::Function
@@ -154,6 +160,8 @@ Resources:
             RestApiId: !Ref ApiGateway
             Path: /upload_image
             Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
 
   # Cognito User Pool
   UserPool:
@@ -202,7 +210,6 @@ Resources:
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
       Auth:
-        DefaultAuthorizer: CognitoAuthorizer
         Authorizers:
           CognitoAuthorizer:
             UserPoolArn: !GetAtt UserPool.Arn
