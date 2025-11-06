@@ -4,6 +4,9 @@ frontend:
     build:
       commands:
         - sed -i "s|https://api-gateway-placeholder|$API_URL|g" web/config.js
+        - sed -i "s|user-pool-placeholder|$USER_POOL_ID|g" web/config.js
+        - sed -i "s|user-pool-client-placeholder|$USER_POOL_CLIENT_ID|g" web/config.js
+
   artifacts:
     baseDirectory: web
     files:
