@@ -544,7 +544,12 @@
             document.getElementById('imageDisplay').innerHTML = '<p>Loading image...</p>';
 
             try {
-                const response = await fetch(`${API_BASE}/image/${imageName}`, {
+                const displayElement = document.getElementById('imageDisplay');
+                const rect = displayElement.getBoundingClientRect();
+                const maxWidth = Math.floor(rect.width);
+                const maxHeight = Math.floor(rect.height);
+                
+                const response = await fetch(`${API_BASE}/image/${imageName}?maxwidth=${maxWidth}&maxheight=${maxHeight}`, {
                     headers: {
                         'Accept': 'image/jpeg,image/png,image/gif',
                         'Authorization': authToken
