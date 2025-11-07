@@ -60,15 +60,17 @@
         .image-list {
             grid-column: 1;
             grid-row: 3;
-            overflow-y: auto;
+            height: 400px;
+            overflow-y: hidden;
         }
 
         .pagination {
             grid-column: 1;
             grid-row: 4;
-            padding: 10px;
+            padding: 5px;
             text-align: center;
             border: 1px solid #ddd;
+            height: auto;
         }
 
         .selected-image {
@@ -354,7 +356,7 @@
                         <div id="activeFilters">No filters active</div>
                     </div>
                     <div class="image-list">
-                        <h4>Images</h4>
+                        <h4>Images (max 10 entries)</h4>
                         <div id="imageList">Loading...</div>
                     </div>
                     <div class="pagination">
@@ -380,7 +382,7 @@
         }
 
         let currentPage = 0;
-        const imagesPerPage = 12;
+        const imagesPerPage = 10;
         let activeFilters = [];
         let imageLabels = {};
         let currentImageUrl = null;

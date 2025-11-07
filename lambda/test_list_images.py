@@ -18,7 +18,7 @@ class TestListImages(unittest.TestCase):
             ]
         }
         
-        event = {'queryStringParameters': {'page': '0', 'limit': '12'}}
+        event = {'queryStringParameters': {'page': '0', 'limit': '10'}}
         response = list_images.lambda_handler(event, {})
         
         self.assertEqual(response['statusCode'], 200)
@@ -92,7 +92,7 @@ class TestListImages(unittest.TestCase):
         
         body = json.loads(response['body'])
         self.assertEqual(body['pagination']['page'], 0)
-        self.assertEqual(body['pagination']['limit'], 12)
+        self.assertEqual(body['pagination']['limit'], 10)
     
     @patch('list_images.s3_client')
     def test_empty_filters(self, mock_s3):

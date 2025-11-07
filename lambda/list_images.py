@@ -17,7 +17,7 @@ def lambda_handler(event, context):
     # Parse query parameters
     query_params = event.get("queryStringParameters") or {}
     page = int(query_params.get("page", 0))
-    limit = int(query_params.get("limit", 12))
+    limit = int(query_params.get("limit", 10))
     filters = query_params.get("filters", "").split(",") if query_params.get("filters") else []
     filters = [f.strip().lower() for f in filters if f.strip()]
     
