@@ -159,13 +159,20 @@
             cursor: pointer;
         }
 
-        .pagination button:hover {
+        .pagination button:hover:not(:disabled) {
             background: #f0f0f0;
         }
 
         .pagination button.active {
             background: #007cba;
             color: white;
+        }
+
+        .pagination button:disabled {
+            background: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+            border-color: #dee2e6;
         }
 
         .upload-button {
@@ -351,7 +358,6 @@
                         <div id="imageList">Loading...</div>
                     </div>
                     <div class="pagination">
-                        <h4>Pagination Controls</h4>
                         <div id="paginationControls"></div>
                     </div>
                     <div class="selected-image">
@@ -373,59 +379,79 @@
             `;
         }
 
-        let filteredImages = [];
         let currentPage = 0;
         const imagesPerPage = 12;
         let activeFilters = [];
         let imageLabels = {};
         let currentImageUrl = null;
+        let totalPages = 0;
+        let totalImages = 0;
 
         async function loadImages() {
+            document.getElementById('imageList').innerHTML = 'Loading...';
             try {
-                const response = await fetch(`${API_BASE}/images`, {
+                const filtersParam = activeFilters.length > 0 ? `&filters=${encodeURIComponent(activeFilters.join(','))}` : '';
+                const response = await fetch(`${API_BASE}/images?page=${currentPage}&limit=${imagesPerPage}${filtersParam}`, {
                     headers: { 'Authorization': authToken }
                 });
-                images = await response.json();
-                filteredImages = [...images];
-                currentPage = 0;
+                const data = await response.json();
+                images = data.images;
+                totalPages = data.pagination.totalPages;
+                totalImages = data.pagination.total;
                 displayImageList();
                 updatePagination();
             } catch (error) {
-                document.getElementById('imageList').innerHTML = 'Error loading images';
+                let message = 'Unable to load images. ';
+                if (error.message.includes('401') || error.message.includes('403')) {
+                    message += 'Please log in again.';
+                } else if (error.message.includes('NetworkError') || !navigator.onLine) {
+                    message += 'Check your internet connection.';
+                } else {
+                    message += 'Please try again later.';
+                }
+                document.getElementById('imageList').innerHTML = message;
             }
         }
 
         function displayImageList() {
             const listElement = document.getElementById('imageList');
-            const startIndex = currentPage * imagesPerPage;
-            const endIndex = startIndex + imagesPerPage;
-            const pageImages = filteredImages.slice(startIndex, endIndex);
-
-            listElement.innerHTML = pageImages.map((image, index) =>
+            listElement.innerHTML = images.map(image =>
                 `<div class="image-item" data-image="${image}" onclick="selectImage('${image}')">${image}</div>`
             ).join('');
         }
 
         function updatePagination() {
-            const totalPages = Math.ceil(filteredImages.length / imagesPerPage);
             const paginationElement = document.getElementById('paginationControls');
 
             if (totalPages <= 1) {
-                paginationElement.innerHTML = '';
+                paginationElement.innerHTML = `<p>Total: ${totalImages} images</p>`;
                 return;
             }
 
-            let buttons = '';
+            const firstDisabled = currentPage === 0 ? 'disabled' : '';
+            const lastDisabled = currentPage === totalPages - 1 ? 'disabled' : '';
+            
+            let controls = `
+                <p>Total: ${totalImages} images</p>
+                <button ${firstDisabled} onclick="changePage(0)">First</button>
+                <button ${firstDisabled} onclick="changePage(${currentPage - 1})">&laquo;</button>
+            `;
+            
             for (let i = 0; i < totalPages; i++) {
-                buttons += `<button class="${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i + 1}</button>`;
+                controls += `<button class="${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i + 1}</button>`;
             }
-            paginationElement.innerHTML = buttons;
+            
+            controls += `
+                <button ${lastDisabled} onclick="changePage(${currentPage + 1})">&raquo;</button>
+                <button ${lastDisabled} onclick="changePage(${totalPages - 1})">Last</button>
+            `;
+            
+            paginationElement.innerHTML = controls;
         }
 
         function changePage(page) {
             currentPage = page;
-            displayImageList();
-            updatePagination();
+            loadImages();
         }
 
         function handleFilterKeypress(event) {
@@ -439,7 +465,8 @@
             if (filterText && !activeFilters.includes(filterText)) {
                 activeFilters.push(filterText);
                 updateActiveFilters();
-                applyFilters();
+                currentPage = 0;
+                loadImages();
                 document.getElementById('filterInput').value = '';
             }
         }
@@ -458,27 +485,11 @@
         function removeFilter(filter) {
             activeFilters = activeFilters.filter(f => f !== filter);
             updateActiveFilters();
-            applyFilters();
+            currentPage = 0;
+            loadImages();
         }
 
-        async function applyFilters() {
-            if (activeFilters.length === 0) {
-                filteredImages = [...images];
-            } else {
-                filteredImages = [];
-                for (const image of images) {
-                    const labels = await getImageLabels(image);
-                    if (labels && activeFilters.some(filter =>
-                        labels.some(label => label.name.toLowerCase().includes(filter))
-                    )) {
-                        filteredImages.push(image);
-                    }
-                }
-            }
-            currentPage = 0;
-            displayImageList();
-            updatePagination();
-        }
+
 
         async function getImageLabels(imageName) {
             if (imageLabels[imageName]) {
@@ -553,7 +564,15 @@
                 img.src = imageUrl;
             } catch (error) {
                 console.error('Error fetching image:', error);
-                document.getElementById('imageDisplay').innerHTML = '<p>Failed to load image</p>';
+                let message = 'Unable to display image. ';
+                if (error.message.includes('404')) {
+                    message += 'Image not found.';
+                } else if (error.message.includes('401')) {
+                    message += 'Please log in again.';
+                } else {
+                    message += 'Please try again.';
+                }
+                document.getElementById('imageDisplay').innerHTML = `<p>${message}</p>`;
             }
 
             try {
@@ -581,7 +600,15 @@
                     document.getElementById('labelsDisplay').innerHTML = 'No labels found';
                 }
             } catch (error) {
-                document.getElementById('labelsDisplay').innerHTML = 'No labels found';
+                let message = 'Unable to load labels. ';
+                if (error.message.includes('404')) {
+                    message = 'No labels available for this image.';
+                } else if (error.message.includes('401')) {
+                    message += 'Please log in again.';
+                } else {
+                    message += 'Please try again.';
+                }
+                document.getElementById('labelsDisplay').innerHTML = message;
             }
         }
 
@@ -595,7 +622,10 @@
             if (files.length === 0) return;
 
             const reportDiv = document.getElementById('uploadReport');
-
+            const uploadButton = document.querySelector('.upload-button');
+            
+            uploadButton.disabled = true;
+            uploadButton.textContent = 'Uploading...';
             reportDiv.innerHTML = 'Uploading files...';
 
             let successful = 0;
@@ -618,7 +648,15 @@
                         failed.push(`${file.name}: ${response.status} ${response.statusText}`);
                     }
                 } catch (error) {
-                    failed.push(`${file.name}: ${error.message}`);
+                    let errorMsg = `${file.name}: `;
+                    if (error.message.includes('NetworkError')) {
+                        errorMsg += 'Network error - check connection';
+                    } else if (error.message.includes('413')) {
+                        errorMsg += 'File too large';
+                    } else {
+                        errorMsg += 'Upload failed - try again';
+                    }
+                    failed.push(errorMsg);
                 }
             }
 
@@ -630,6 +668,8 @@
 
             if (successful > 0) loadImages();
             fileInput.value = '';
+            uploadButton.disabled = false;
+            uploadButton.innerHTML = '&uarr; Upload Images';
         }
 
         checkAuth();
