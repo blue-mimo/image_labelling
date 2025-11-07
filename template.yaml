@@ -136,6 +136,7 @@ Resources:
       CodeUri: lambda/
       Handler: get_image.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
+      MemorySize: 512
       Layers:
         - arn:aws:lambda:us-east-1:770693421928:layer:Klayers-p311-Pillow:10
       Events:
