@@ -60,7 +60,7 @@
         .image-list {
             grid-column: 1;
             grid-row: 3;
-            height: calc(100% - 120px);
+            height: 403px;
             overflow-y: hidden;
         }
 
@@ -106,7 +106,7 @@
             grid-column: 2;
             grid-row: 3 / 5;
             border: 1px solid #ddd;
-            padding: 20px;
+            padding: 15px;
             text-align: center;
         }
 
@@ -114,7 +114,7 @@
             grid-column: 3;
             grid-row: 3 / 5;
             border: 1px solid #ddd;
-            padding: 20px;
+            padding: 15px;
             overflow-y: auto;
         }
 
@@ -435,7 +435,7 @@
             listElement.innerHTML = images.map(image =>
                 `<div class="image-item" data-image="${image}" onclick="selectImage('${image}')">${image}</div>`
             ).join('');
-            
+
             // Update header with image range
             const startIndex = currentPage * imagesPerPage + 1;
             const endIndex = Math.min(startIndex + images.length - 1, totalImages);
