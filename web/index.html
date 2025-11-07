@@ -60,17 +60,29 @@
         .image-list {
             grid-column: 1;
             grid-row: 3;
-            height: 400px;
+            height: calc(100% - 120px);
             overflow-y: hidden;
         }
 
         .pagination {
             grid-column: 1;
             grid-row: 4;
-            padding: 5px;
+            padding: 2px;
             text-align: center;
             border: 1px solid #ddd;
-            height: auto;
+            height: 60px;
+            font-size: 12px;
+        }
+
+        .pagination p {
+            margin: 2px 0;
+            font-size: 11px;
+        }
+
+        .pagination button {
+            margin: 0 2px;
+            padding: 2px 6px;
+            font-size: 11px;
         }
 
         .selected-image {
@@ -107,10 +119,13 @@
         }
 
         .image-item {
-            padding: 10px;
+            padding: 8px;
             border: 1px solid #ddd;
-            margin: 5px 0;
+            margin: 3px 0;
             cursor: pointer;
+            font-size: 14px;
+            height: 32px;
+            box-sizing: border-box;
         }
 
         .image-item:hover {
@@ -432,22 +447,22 @@
 
             const firstDisabled = currentPage === 0 ? 'disabled' : '';
             const lastDisabled = currentPage === totalPages - 1 ? 'disabled' : '';
-            
+
             let controls = `
                 <p>Total: ${totalImages} images</p>
                 <button ${firstDisabled} onclick="changePage(0)">First</button>
                 <button ${firstDisabled} onclick="changePage(${currentPage - 1})">&laquo;</button>
             `;
-            
+
             for (let i = 0; i < totalPages; i++) {
                 controls += `<button class="${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i + 1}</button>`;
             }
-            
+
             controls += `
                 <button ${lastDisabled} onclick="changePage(${currentPage + 1})">&raquo;</button>
                 <button ${lastDisabled} onclick="changePage(${totalPages - 1})">Last</button>
             `;
-            
+
             paginationElement.innerHTML = controls;
         }
 
@@ -625,7 +640,7 @@
 
             const reportDiv = document.getElementById('uploadReport');
             const uploadButton = document.querySelector('.upload-button');
-            
+
             uploadButton.disabled = true;
             uploadButton.textContent = 'Uploading...';
             reportDiv.innerHTML = 'Uploading files...';
