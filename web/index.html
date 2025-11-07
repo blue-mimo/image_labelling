@@ -347,7 +347,7 @@
                         <div id="activeFilters">No filters active</div>
                     </div>
                     <div class="image-list">
-                        <h4>Image List (max 12 entries)</h4>
+                        <h4>Images</h4>
                         <div id="imageList">Loading...</div>
                     </div>
                     <div class="pagination">
@@ -358,16 +358,15 @@
                         <div id="imageDisplay">Select an image</div>
                     </div>
                     <div class="labels-table-container">
-                        <h4>Labels Table</h4>
+                        <h4>Labels</h4>
                         <div id="labelsDisplay">Select an image to view labels</div>
                     </div>
                     <div class="upload-area">
-                        <h4>Image Upload Area</h4>
-                        <button class="upload-button" onclick="triggerFileUpload()">↑ Upload Images</button>
+                        <button class="upload-button" onclick="triggerFileUpload()">&uarr; Upload Images</button>
                         <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.gif" style="display: none;" onchange="handleFileUpload()">
                     </div>
                     <div class="upload-report-area">
-                        <h4>Upload Report Area</h4>
+                        <h4>Upload Report</h4>
                         <div id="uploadReport" class="upload-report">No uploads yet</div>
                     </div>
                 </div>
@@ -401,7 +400,7 @@
             const startIndex = currentPage * imagesPerPage;
             const endIndex = startIndex + imagesPerPage;
             const pageImages = filteredImages.slice(startIndex, endIndex);
-            
+
             listElement.innerHTML = pageImages.map((image, index) =>
                 `<div class="image-item" data-image="${image}" onclick="selectImage('${image}')">${image}</div>`
             ).join('');
@@ -410,12 +409,12 @@
         function updatePagination() {
             const totalPages = Math.ceil(filteredImages.length / imagesPerPage);
             const paginationElement = document.getElementById('paginationControls');
-            
+
             if (totalPages <= 1) {
                 paginationElement.innerHTML = '';
                 return;
             }
-            
+
             let buttons = '';
             for (let i = 0; i < totalPages; i++) {
                 buttons += `<button class="${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i + 1}</button>`;
@@ -450,8 +449,8 @@
             if (activeFilters.length === 0) {
                 filtersElement.innerHTML = 'No filters active';
             } else {
-                filtersElement.innerHTML = activeFilters.map(filter => 
-                    `<span class="filter-tag">${filter}<span class="remove" onclick="removeFilter('${filter}')">×</span></span>`
+                filtersElement.innerHTML = activeFilters.map(filter =>
+                    `<span class="filter-tag">${filter}<span class="remove" onclick="removeFilter('${filter}')">&times;</span></span>`
                 ).join('');
             }
         }
@@ -469,7 +468,7 @@
                 filteredImages = [];
                 for (const image of images) {
                     const labels = await getImageLabels(image);
-                    if (labels && activeFilters.some(filter => 
+                    if (labels && activeFilters.some(filter =>
                         labels.some(label => label.name.toLowerCase().includes(filter))
                     )) {
                         filteredImages.push(image);
@@ -502,7 +501,7 @@
                 URL.revokeObjectURL(currentImageUrl);
                 currentImageUrl = null;
             }
-            
+
             document.querySelectorAll('.image-item').forEach(item => {
                 item.classList.toggle('selected', item.dataset.image === imageName);
             });
@@ -539,7 +538,7 @@
                 img.onload = () => {
                     console.log('Image loaded successfully');
                 };
-                
+
                 currentImageUrl = imageUrl;
 
                 img.onerror = (e) => {
