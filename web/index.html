@@ -10,19 +10,123 @@
         }
 
         .container {
-            display: flex;
+            display: grid;
+            grid-template-columns: 300px 1fr 1fr;
+            grid-template-rows: auto auto 1fr auto;
             gap: 20px;
+            height: 80vh;
+        }
+
+        .filter-search {
+            grid-column: 1;
+            grid-row: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+
+        .filter-search input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            box-sizing: border-box;
+        }
+
+        .active-filters {
+            grid-column: 1;
+            grid-row: 2;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background: #f9f9f9;
+            min-height: 60px;
+        }
+
+        .filter-tag {
+            display: inline-block;
+            background: #007cba;
+            color: white;
+            padding: 4px 8px;
+            margin: 2px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .filter-tag .remove {
+            margin-left: 5px;
+            cursor: pointer;
+            font-weight: bold;
         }
 
         .image-list {
-            width: 300px;
+            grid-column: 1;
+            grid-row: 3;
+            height: 403px;
+            overflow-y: hidden;
+        }
+
+        .pagination {
+            grid-column: 1;
+            grid-row: 4;
+            padding: 2px;
+            text-align: center;
+            border: 1px solid #ddd;
+            height: 60px;
+            font-size: 12px;
+        }
+
+        .pagination p {
+            margin: 2px 0;
+            font-size: 11px;
+        }
+
+        .pagination button {
+            margin: 0 2px;
+            padding: 2px 6px;
+            font-size: 11px;
+        }
+
+        .selected-image {
+            grid-column: 2;
+            grid-row: 1 / 3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #ddd;
+            overflow: hidden;
+        }
+
+        .labels-table-container {
+            grid-column: 3;
+            grid-row: 1 / 3;
+            background: #f5f5f5;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .upload-area {
+            grid-column: 2;
+            grid-row: 3 / 5;
+            border: 1px solid #ddd;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .upload-report-area {
+            grid-column: 3;
+            grid-row: 3 / 5;
+            border: 1px solid #ddd;
+            padding: 15px;
+            overflow-y: auto;
         }
 
         .image-item {
-            padding: 10px;
+            padding: 8px;
             border: 1px solid #ddd;
-            margin: 5px 0;
+            margin: 3px 0;
             cursor: pointer;
+            font-size: 14px;
+            height: 32px;
+            box-sizing: border-box;
         }
 
         .image-item:hover {
@@ -34,19 +138,9 @@
             color: white;
         }
 
-        .viewer {
-            flex: 1;
-            display: flex;
-            gap: 20px;
-        }
-
-        .image-container {
-            flex: 0 0 25%;
-        }
-
         #imageDisplay {
             width: 100%;
-            min-height: 200px;
+            height: 100%;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -54,14 +148,8 @@
 
         .image-display {
             max-width: 100%;
-            max-height: 20vh;
+            max-height: 100%;
             object-fit: contain;
-        }
-
-        .labels {
-            flex: 0 0 25%;
-            background: #f5f5f5;
-            height: fit-content;
         }
 
         .labels-table {
@@ -81,9 +169,28 @@
             background-color: #e0e0e0;
         }
 
-        .upload-widget {
-            margin-top: 20px;
-            text-align: center;
+        .pagination button {
+            margin: 0 5px;
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: #f0f0f0;
+        }
+
+        .pagination button.active {
+            background: #007cba;
+            color: white;
+        }
+
+        .pagination button:disabled {
+            background: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+            border-color: #dee2e6;
         }
 
         .upload-button {
@@ -105,7 +212,6 @@
             padding: 10px;
             background: #f0f0f0;
             border-radius: 5px;
-            display: none;
         }
     </style>
 </head>
@@ -116,6 +222,10 @@
     <script src="https://unpkg.com/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js"></script>
     <script src="config.js"></script>
     <script>
+        if (!window.APP_CONFIG) {
+            alert('Configuration not loaded. Please check config.js');
+            throw new Error('APP_CONFIG not found');
+        }
         const API_BASE = window.APP_CONFIG.API_BASE;
         const USER_POOL_ID = window.APP_CONFIG.USER_POOL_ID;
         const USER_POOL_CLIENT_ID = window.APP_CONFIG.USER_POOL_CLIENT_ID;
@@ -252,50 +362,183 @@
                     <button onclick="logout()" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 3px;">Logout</button>
                 </div>
                 <div class="container">
+                    <div class="filter-search">
+                        <h4>Filter Search Box</h4>
+                        <input type="text" id="filterInput" placeholder="Search labels..." onkeypress="handleFilterKeypress(event)">
+                        <button onclick="addFilter()" style="margin-top: 5px; padding: 5px 10px;">Add Filter</button>
+                    </div>
+                    <div class="active-filters">
+                        <h4>Active Filters</h4>
+                        <div id="activeFilters">No filters active</div>
+                    </div>
                     <div class="image-list">
-                        <h3>Images</h3>
+                        <h4 id="imageListHeader">Images</h4>
                         <div id="imageList">Loading...</div>
                     </div>
-                    <div class="viewer">
-                        <div class="image-container">
-                            <div id="imageDisplay"></div>
-                        </div>
-                        <div class="labels">
-                            <div id="labelsDisplay">Select an image to view labels</div>
-                        </div>
+                    <div class="pagination">
+                        <div id="paginationControls"></div>
                     </div>
-                </div>
-                <div class="upload-widget">
-                    <button class="upload-button" onclick="triggerFileUpload()">↑ Upload Images</button>
-                    <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.gif" style="display: none;" onchange="handleFileUpload()">
-                    <div id="uploadReport" class="upload-report"></div>
+                    <div class="selected-image">
+                        <div id="imageDisplay">Select an image</div>
+                    </div>
+                    <div class="labels-table-container">
+                        <h4>Labels</h4>
+                        <div id="labelsDisplay">Select an image to view labels</div>
+                    </div>
+                    <div class="upload-area">
+                        <button class="upload-button" onclick="triggerFileUpload()">&uarr; Upload Images</button>
+                        <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.gif" style="display: none;" onchange="handleFileUpload()">
+                    </div>
+                    <div class="upload-report-area">
+                        <h4>Upload Report</h4>
+                        <div id="uploadReport" class="upload-report">No uploads yet</div>
+                    </div>
                 </div>
             `;
         }
 
+        let currentPage = 0;
+        const imagesPerPage = 10;
+        let activeFilters = [];
+        let imageLabels = {};
+        let currentImageUrl = null;
+        let totalPages = 0;
+        let totalImages = 0;
+
         async function loadImages() {
+            document.getElementById('imageList').innerHTML = 'Loading...';
             try {
-                const response = await fetch(`${API_BASE}/images`, {
+                const filtersParam = activeFilters.length > 0 ? `&filters=${encodeURIComponent(activeFilters.join(','))}` : '';
+                const response = await fetch(`${API_BASE}/images?page=${currentPage}&limit=${imagesPerPage}${filtersParam}`, {
                     headers: { 'Authorization': authToken }
                 });
-                images = await response.json();
+                const data = await response.json();
+                images = data.images;
+                totalPages = data.pagination.totalPages;
+                totalImages = data.pagination.total;
                 displayImageList();
+                updatePagination();
             } catch (error) {
-                document.getElementById('imageList').innerHTML = 'Error loading images';
+                let message = 'Unable to load images. ';
+                if (error.message.includes('401') || error.message.includes('403')) {
+                    message += 'Please log in again.';
+                } else if (error.message.includes('NetworkError') || !navigator.onLine) {
+                    message += 'Check your internet connection.';
+                } else {
+                    message += 'Please try again later.';
+                }
+                document.getElementById('imageList').innerHTML = message;
             }
         }
 
         function displayImageList() {
             const listElement = document.getElementById('imageList');
-            listElement.innerHTML = images.map((image, index) =>
-                `<div class="image-item" onclick="selectImage(${index})">${image}</div>`
+            listElement.innerHTML = images.map(image =>
+                `<div class="image-item" data-image="${image}" onclick="selectImage('${image}')">${image}</div>`
             ).join('');
+
+            // Update header with image range
+            const startIndex = currentPage * imagesPerPage + 1;
+            const endIndex = Math.min(startIndex + images.length - 1, totalImages);
+            const headerElement = document.getElementById('imageListHeader');
+            headerElement.textContent = `Images (${startIndex}-${endIndex} of ${totalImages})`;
         }
 
-        async function selectImage(index) {
-            const imageName = images[index];
-            document.querySelectorAll('.image-item').forEach((item, i) => {
-                item.classList.toggle('selected', i === index);
+        function updatePagination() {
+            const paginationElement = document.getElementById('paginationControls');
+
+            if (totalPages <= 1) {
+                paginationElement.innerHTML = `<p>Total: ${totalImages} images</p>`;
+                return;
+            }
+
+            const firstDisabled = currentPage === 0 ? 'disabled' : '';
+            const lastDisabled = currentPage === totalPages - 1 ? 'disabled' : '';
+
+            let controls = `
+                <p>Total: ${totalImages} images</p>
+                <button ${firstDisabled} onclick="changePage(0)">First</button>
+                <button ${firstDisabled} onclick="changePage(${currentPage - 1})">&laquo;</button>
+            `;
+
+            for (let i = 0; i < totalPages; i++) {
+                controls += `<button class="${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i + 1}</button>`;
+            }
+
+            controls += `
+                <button ${lastDisabled} onclick="changePage(${currentPage + 1})">&raquo;</button>
+                <button ${lastDisabled} onclick="changePage(${totalPages - 1})">Last</button>
+            `;
+
+            paginationElement.innerHTML = controls;
+        }
+
+        function changePage(page) {
+            currentPage = page;
+            loadImages();
+        }
+
+        function handleFilterKeypress(event) {
+            if (event.key === 'Enter') {
+                addFilter();
+            }
+        }
+
+        function addFilter() {
+            const filterText = document.getElementById('filterInput').value.trim().toLowerCase();
+            if (filterText && !activeFilters.includes(filterText)) {
+                activeFilters.push(filterText);
+                updateActiveFilters();
+                currentPage = 0;
+                loadImages();
+                document.getElementById('filterInput').value = '';
+            }
+        }
+
+        function updateActiveFilters() {
+            const filtersElement = document.getElementById('activeFilters');
+            if (activeFilters.length === 0) {
+                filtersElement.innerHTML = 'No filters active';
+            } else {
+                filtersElement.innerHTML = activeFilters.map(filter =>
+                    `<span class="filter-tag">${filter}<span class="remove" onclick="removeFilter('${filter}')">&times;</span></span>`
+                ).join('');
+            }
+        }
+
+        function removeFilter(filter) {
+            activeFilters = activeFilters.filter(f => f !== filter);
+            updateActiveFilters();
+            currentPage = 0;
+            loadImages();
+        }
+
+
+
+        async function getImageLabels(imageName) {
+            if (imageLabels[imageName]) {
+                return imageLabels[imageName];
+            }
+            try {
+                const response = await fetch(`${API_BASE}/labels/${imageName}`, {
+                    headers: { 'Authorization': authToken }
+                });
+                const data = await response.json();
+                imageLabels[imageName] = data.labels || [];
+                return imageLabels[imageName];
+            } catch (error) {
+                return [];
+            }
+        }
+
+        async function selectImage(imageName) {
+            if (currentImageUrl) {
+                URL.revokeObjectURL(currentImageUrl);
+                currentImageUrl = null;
+            }
+
+            document.querySelectorAll('.image-item').forEach(item => {
+                item.classList.toggle('selected', item.dataset.image === imageName);
             });
 
             document.getElementById('imageDisplay').innerHTML = '<p>Loading image...</p>';
@@ -329,8 +572,9 @@
 
                 img.onload = () => {
                     console.log('Image loaded successfully');
-                    URL.revokeObjectURL(imageUrl);
                 };
+
+                currentImageUrl = imageUrl;
 
                 img.onerror = (e) => {
                     console.error('Image failed to display:', e);
@@ -344,7 +588,15 @@
                 img.src = imageUrl;
             } catch (error) {
                 console.error('Error fetching image:', error);
-                document.getElementById('imageDisplay').innerHTML = '<p>Failed to load image</p>';
+                let message = 'Unable to display image. ';
+                if (error.message.includes('404')) {
+                    message += 'Image not found.';
+                } else if (error.message.includes('401')) {
+                    message += 'Please log in again.';
+                } else {
+                    message += 'Please try again.';
+                }
+                document.getElementById('imageDisplay').innerHTML = `<p>${message}</p>`;
             }
 
             try {
@@ -372,7 +624,15 @@
                     document.getElementById('labelsDisplay').innerHTML = 'No labels found';
                 }
             } catch (error) {
-                document.getElementById('labelsDisplay').innerHTML = 'No labels found';
+                let message = 'Unable to load labels. ';
+                if (error.message.includes('404')) {
+                    message = 'No labels available for this image.';
+                } else if (error.message.includes('401')) {
+                    message += 'Please log in again.';
+                } else {
+                    message += 'Please try again.';
+                }
+                document.getElementById('labelsDisplay').innerHTML = message;
             }
         }
 
@@ -386,7 +646,10 @@
             if (files.length === 0) return;
 
             const reportDiv = document.getElementById('uploadReport');
-            reportDiv.style.display = 'block';
+            const uploadButton = document.querySelector('.upload-button');
+
+            uploadButton.disabled = true;
+            uploadButton.textContent = 'Uploading...';
             reportDiv.innerHTML = 'Uploading files...';
 
             let successful = 0;
@@ -409,7 +672,15 @@
                         failed.push(`${file.name}: ${response.status} ${response.statusText}`);
                     }
                 } catch (error) {
-                    failed.push(`${file.name}: ${error.message}`);
+                    let errorMsg = `${file.name}: `;
+                    if (error.message.includes('NetworkError')) {
+                        errorMsg += 'Network error - check connection';
+                    } else if (error.message.includes('413')) {
+                        errorMsg += 'File too large';
+                    } else {
+                        errorMsg += 'Upload failed - try again';
+                    }
+                    failed.push(errorMsg);
                 }
             }
 
@@ -421,6 +692,8 @@
 
             if (successful > 0) loadImages();
             fileInput.value = '';
+            uploadButton.disabled = false;
+            uploadButton.innerHTML = '&uarr; Upload Images';
         }
 
         checkAuth();
