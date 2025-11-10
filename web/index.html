@@ -64,6 +64,28 @@
             overflow-y: hidden;
         }
 
+        .image-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .refresh-btn {
+            background: none;
+            border: 1px solid #007cba;
+            color: #007cba;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .refresh-btn:hover {
+            background: #007cba;
+            color: white;
+        }
+
         .pagination {
             grid-column: 1;
             grid-row: 4;
@@ -419,7 +441,10 @@
                         <div id="activeFilters">No filters active</div>
                     </div>
                     <div class="image-list">
-                        <h4 id="imageListHeader">Images</h4>
+                        <div class="image-list-header">
+                            <h4 id="imageListHeader">Images</h4>
+                            <button class="refresh-btn" onclick="loadImages()" title="Refresh image list">&#8635;</button>
+                        </div>
                         <div id="imageList">Loading...</div>
                     </div>
                     <div class="pagination">
