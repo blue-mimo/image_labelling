@@ -213,26 +213,6 @@
             background: #f0f0f0;
             border-radius: 5px;
         }
-
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #007cba;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
     </style>
 </head>
 
@@ -535,55 +515,40 @@
 
 
 
-        async function getAndDisplayLabels(imageName) {
-            document.getElementById('labelsDisplay').innerHTML = '<div class="spinner"></div>';
-
+        async function getImageLabels(imageName) {
+            if (imageLabels[imageName]) {
+                return imageLabels[imageName];
+            }
             try {
                 const response = await fetch(`${API_BASE}/labels/${imageName}`, {
                     headers: { 'Authorization': authToken }
                 });
                 const data = await response.json();
-
-                if (data.labels && data.labels.length > 0) {
-                    const tableHTML = `
-                        <table class="labels-table">
-                            <thead><tr><th>Label</th><th>Confidence</th></tr></thead>
-                            <tbody>
-                                ${data.labels.map(label => `
-                                    <tr>
-                                        <td>${label.name}</td>
-                                        <td style="background-color: ${getConfidenceColor(label.confidence)}">${label.confidence.toFixed(1)}%</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    `;
-                    document.getElementById('labelsDisplay').innerHTML = tableHTML;
-                } else {
-                    document.getElementById('labelsDisplay').innerHTML = 'No labels found';
-                }
+                imageLabels[imageName] = data.labels || [];
+                return imageLabels[imageName];
             } catch (error) {
-                let message = 'Unable to load labels. ';
-                if (error.message.includes('404')) {
-                    message = 'No labels available for this image.';
-                } else if (error.message.includes('401')) {
-                    message += 'Please log in again.';
-                } else {
-                    message += 'Please try again.';
-                }
-                document.getElementById('labelsDisplay').innerHTML = message;
+                return [];
             }
         }
 
-        async function getAndDisplayImage(imageName) {
-            document.getElementById('imageDisplay').innerHTML = '<div class="spinner"></div>';
+        async function selectImage(imageName) {
+            if (currentImageUrl) {
+                URL.revokeObjectURL(currentImageUrl);
+                currentImageUrl = null;
+            }
+
+            document.querySelectorAll('.image-item').forEach(item => {
+                item.classList.toggle('selected', item.dataset.image === imageName);
+            });
+
+            document.getElementById('imageDisplay').innerHTML = '<p>Loading image...</p>';
 
             try {
                 const displayElement = document.getElementById('imageDisplay');
                 const rect = displayElement.getBoundingClientRect();
                 const maxWidth = Math.floor(rect.width);
                 const maxHeight = Math.floor(rect.height);
-
+                
                 const response = await fetch(`${API_BASE}/image/${imageName}?maxwidth=${maxWidth}&maxheight=${maxHeight}`, {
                     headers: {
                         'Accept': 'image/jpeg,image/png,image/gif',
@@ -638,25 +603,41 @@
                 }
                 document.getElementById('imageDisplay').innerHTML = `<p>${message}</p>`;
             }
-        }
-
-        async function selectImage(imageName) {
-            if (currentImageUrl) {
-                URL.revokeObjectURL(currentImageUrl);
-                currentImageUrl = null;
-            }
-
-            document.querySelectorAll('.image-item').forEach(item => {
-                item.classList.toggle('selected', item.dataset.image === imageName);
-            });
 
             try {
-                await Promise.all([
-                    getAndDisplayLabels(imageName),
-                    getAndDisplayImage(imageName)
-                ]);
+                const response = await fetch(`${API_BASE}/labels/${imageName}`, {
+                    headers: { 'Authorization': authToken }
+                });
+                const data = await response.json();
+
+                if (data.labels && data.labels.length > 0) {
+                    const tableHTML = `
+                        <table class="labels-table">
+                            <thead><tr><th>Label</th><th>Confidence</th></tr></thead>
+                            <tbody>
+                                ${data.labels.map(label => `
+                                    <tr>
+                                        <td>${label.name}</td>
+                                        <td style="background-color: ${getConfidenceColor(label.confidence)}">${label.confidence.toFixed(1)}%</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    document.getElementById('labelsDisplay').innerHTML = tableHTML;
+                } else {
+                    document.getElementById('labelsDisplay').innerHTML = 'No labels found';
+                }
             } catch (error) {
-                console.error('Error displaying image or labels:', error);
+                let message = 'Unable to load labels. ';
+                if (error.message.includes('404')) {
+                    message = 'No labels available for this image.';
+                } else if (error.message.includes('401')) {
+                    message += 'Please log in again.';
+                } else {
+                    message += 'Please try again.';
+                }
+                document.getElementById('labelsDisplay').innerHTML = message;
             }
         }
 
