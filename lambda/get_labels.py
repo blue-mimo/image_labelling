@@ -6,8 +6,8 @@ import logging
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table('image_labels')
+dynamodb = boto3.resource("dynamodb")
+table = dynamodb.Table("image_labels")
 
 
 def lambda_handler(event, context):
@@ -31,18 +31,22 @@ def lambda_handler(event, context):
         logger.debug(f"DynamoDB key: {filename}")
 
         logger.debug("Calling DynamoDB get_item for labels")
-        response = table.get_item(
-            Key={'image_name': filename}
-        )
-        
-        if 'Item' not in response:
+        response = table.get_item(Key={"image_name": filename})
+
+        if "Item" not in response:
             raise Exception(f"No labels found for image: {filename}")
-            
-        item = response['Item']
+
+        item = response["Item"]
+
+        converted_labels = [
+            {"name": label["name"], "confidence": float(label["confidence"])}
+            for label in item["labels"]
+        ]
+
         labels = {
-            'image': f"uploads/{filename}",
-            'timestamp': item['timestamp'],
-            'labels': item['labels']
+            "image": f"uploads/{filename}",
+            "timestamp": item["timestamp"],
+            "labels": converted_labels,
         }
         logger.debug(f"Retrieved labels: {len(labels.get('labels', []))} items")
 
