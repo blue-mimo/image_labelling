@@ -6,8 +6,8 @@ import logging
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
-BUCKET_NAME = "bluestone-image-labeling-a08324be2c5f"
-s3_client = boto3.client("s3")
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table('image_labels')
 
 
 def lambda_handler(event, context):
@@ -27,13 +27,23 @@ def lambda_handler(event, context):
     filename = event["pathParameters"]["filename"]
 
     try:
-        label_filename = filename.rsplit(".", 1)[0] + ".json"
-        logger.info(f"Getting labels for image: {filename} -> {label_filename}")
-        logger.debug(f"S3 key: labels/{label_filename}")
+        logger.info(f"Getting labels for image: {filename}")
+        logger.debug(f"DynamoDB key: {filename}")
 
-        logger.debug("Calling S3 get_object for labels")
-        obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=f"labels/{label_filename}")
-        labels = json.loads(obj["Body"].read().decode("utf-8"))
+        logger.debug("Calling DynamoDB get_item for labels")
+        response = table.get_item(
+            Key={'image_name': filename}
+        )
+        
+        if 'Item' not in response:
+            raise Exception(f"No labels found for image: {filename}")
+            
+        item = response['Item']
+        labels = {
+            'image': f"uploads/{filename}",
+            'timestamp': item['timestamp'],
+            'labels': item['labels']
+        }
         logger.debug(f"Retrieved labels: {len(labels.get('labels', []))} items")
 
         return {
