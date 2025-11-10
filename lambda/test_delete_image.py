@@ -50,6 +50,9 @@ class TestDeleteImage(unittest.TestCase):
         response = delete_image.lambda_handler(event, context)
 
         self.assertEqual(response['statusCode'], 200)
+        self.assertIn('headers', response)
+        self.assertEqual(response['headers']['Content-Type'], 'application/json')
+        self.assertEqual(response['headers']['Access-Control-Allow-Origin'], '*')
         body = json.loads(response['body'])
         self.assertEqual(body['message'], 'Image test-image.jpg deleted successfully')
         self.assertEqual(body['deleted_labels'], 3)
@@ -66,6 +69,9 @@ class TestDeleteImage(unittest.TestCase):
         response = delete_image.lambda_handler(event, context)
 
         self.assertEqual(response['statusCode'], 400)
+        self.assertIn('headers', response)
+        self.assertEqual(response['headers']['Content-Type'], 'application/json')
+        self.assertEqual(response['headers']['Access-Control-Allow-Origin'], '*')
         body = json.loads(response['body'])
         self.assertEqual(body['error'], 'Filename is required')
 
@@ -79,6 +85,9 @@ class TestDeleteImage(unittest.TestCase):
         response = delete_image.lambda_handler(event, context)
 
         self.assertEqual(response['statusCode'], 500)
+        self.assertIn('headers', response)
+        self.assertEqual(response['headers']['Content-Type'], 'application/json')
+        self.assertEqual(response['headers']['Access-Control-Allow-Origin'], '*')
         body = json.loads(response['body'])
         self.assertEqual(body['error'], 'Server configuration error')
 
@@ -107,6 +116,9 @@ class TestDeleteImage(unittest.TestCase):
         response = delete_image.lambda_handler(event, context)
 
         self.assertEqual(response['statusCode'], 500)
+        self.assertIn('headers', response)
+        self.assertEqual(response['headers']['Content-Type'], 'application/json')
+        self.assertEqual(response['headers']['Access-Control-Allow-Origin'], '*')
         body = json.loads(response['body'])
         self.assertEqual(body['error'], 'Failed to delete labels: AccessDenied')
 
@@ -204,6 +216,9 @@ class TestDeleteImage(unittest.TestCase):
         response = delete_image.lambda_handler(event, context)
 
         self.assertEqual(response['statusCode'], 500)
+        self.assertIn('headers', response)
+        self.assertEqual(response['headers']['Content-Type'], 'application/json')
+        self.assertEqual(response['headers']['Access-Control-Allow-Origin'], '*')
         body = json.loads(response['body'])
         self.assertEqual(body['error'], 'Failed to delete image from S3: AccessDenied')
 
@@ -218,6 +233,9 @@ class TestDeleteImage(unittest.TestCase):
         response = delete_image.lambda_handler(event, context)
 
         self.assertEqual(response['statusCode'], 500)
+        self.assertIn('headers', response)
+        self.assertEqual(response['headers']['Content-Type'], 'application/json')
+        self.assertEqual(response['headers']['Access-Control-Allow-Origin'], '*')
         body = json.loads(response['body'])
         self.assertEqual(body['error'], 'Failed to initialize AWS services')
 
@@ -241,6 +259,9 @@ class TestDeleteImage(unittest.TestCase):
         response = delete_image.lambda_handler(event, context)
 
         self.assertEqual(response['statusCode'], 500)
+        self.assertIn('headers', response)
+        self.assertEqual(response['headers']['Content-Type'], 'application/json')
+        self.assertEqual(response['headers']['Access-Control-Allow-Origin'], '*')
         body = json.loads(response['body'])
         self.assertEqual(body['error'], 'Internal server error')
 
@@ -281,6 +302,9 @@ class TestDeleteImage(unittest.TestCase):
         response = delete_image.lambda_handler(event, context)
 
         self.assertEqual(response['statusCode'], 400)
+        self.assertIn('headers', response)
+        self.assertEqual(response['headers']['Content-Type'], 'application/json')
+        self.assertEqual(response['headers']['Access-Control-Allow-Origin'], '*')
         body = json.loads(response['body'])
         self.assertEqual(body['error'], 'Filename is required')
 
@@ -292,6 +316,9 @@ class TestDeleteImage(unittest.TestCase):
         response = delete_image.lambda_handler(event, context)
 
         self.assertEqual(response['statusCode'], 400)
+        self.assertIn('headers', response)
+        self.assertEqual(response['headers']['Content-Type'], 'application/json')
+        self.assertEqual(response['headers']['Access-Control-Allow-Origin'], '*')
         body = json.loads(response['body'])
         self.assertEqual(body['error'], 'Filename is required')
 

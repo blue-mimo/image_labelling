@@ -98,6 +98,10 @@ def lambda_handler(event, context):
             logger.warning("Delete request missing filename parameter")
             return {
                 'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
                 'body': json.dumps({'error': 'Filename is required'})
             }
         
@@ -109,6 +113,10 @@ def lambda_handler(event, context):
             logger.error("BUCKET_NAME environment variable not set")
             return {
                 'statusCode': 500,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
                 'body': json.dumps({'error': 'Server configuration error'})
             }
         
@@ -122,6 +130,10 @@ def lambda_handler(event, context):
             logger.error(f"Failed to initialize AWS clients: {e}")
             return {
                 'statusCode': 500,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
                 'body': json.dumps({'error': 'Failed to initialize AWS services'})
             }
         
@@ -133,6 +145,10 @@ def lambda_handler(event, context):
             logger.error(f"DynamoDB error ({error_code}): {e}")
             return {
                 'statusCode': 500,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
                 'body': json.dumps({'error': f'Failed to delete labels: {error_code}'})
             }
         
@@ -144,12 +160,20 @@ def lambda_handler(event, context):
             logger.error(f"S3 error ({error_code}): {e}")
             return {
                 'statusCode': 500,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
                 'body': json.dumps({'error': f'Failed to delete image from S3: {error_code}'})
             }
         
         logger.info(f"Image deletion completed successfully for: {filename}")
         return {
             'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
             'body': json.dumps({
                 'message': f'Image {filename} deleted successfully',
                 'deleted_labels': labels_count
@@ -160,5 +184,9 @@ def lambda_handler(event, context):
         logger.error(f"Unexpected error during image deletion: {str(e)}", exc_info=True)
         return {
             'statusCode': 500,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
             'body': json.dumps({'error': 'Internal server error'})
         }
