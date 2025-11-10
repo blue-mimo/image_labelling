@@ -8,6 +8,7 @@ import boto3
 import logging
 from datetime import datetime, timezone
 from urllib.parse import unquote_plus
+from decimal import Decimal
 
 # Configure logging
 logger = logging.getLogger()
@@ -88,7 +89,7 @@ def lambda_handler(event, context):
             # Save the labels to DynamoDB
             image_name = key.replace("uploads/", "")
             labels = [
-                {"name": label["Name"], "confidence": round(label["Confidence"], 2)}
+                {"name": label["Name"], "confidence": Decimal(f"{label['Confidence']:.2f}")}
                 for label in response["Labels"]
             ]
             logger.info(f"Detected {len(labels)} labels")
