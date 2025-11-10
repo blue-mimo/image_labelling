@@ -127,6 +127,33 @@
             font-size: 14px;
             height: 32px;
             box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .image-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 2px 6px;
+            margin-left: auto;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .delete-btn:hover {
+            background: #dc3545;
+            color: white;
         }
 
         .image-item:hover {
@@ -454,7 +481,10 @@
         function displayImageList() {
             const listElement = document.getElementById('imageList');
             listElement.innerHTML = images.map(image =>
-                `<div class="image-item" data-image="${image}" onclick="selectImage('${image}')">${image}</div>`
+                `<div class="image-item" data-image="${image}">
+                    <span class="image-name" onclick="selectImage('${image}')">${image}</span>
+                    <button class="delete-btn" onclick="deleteImage('${image}')" title="Delete image">&#128465;</button>
+                </div>`
             ).join('');
 
             // Update header with image range
@@ -718,6 +748,37 @@
             fileInput.value = '';
             uploadButton.disabled = false;
             uploadButton.innerHTML = '&uarr; Upload Images';
+        }
+
+        async function deleteImage(imageName) {
+            if (!confirm(`Are you sure you want to delete "${imageName}"?\n\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/image/${imageName}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': authToken }
+                });
+
+                if (response.ok) {
+                    // Clear selected image if it was deleted
+                    const imageDisplay = document.getElementById('imageDisplay');
+                    const labelsDisplay = document.getElementById('labelsDisplay');
+                    if (imageDisplay.querySelector('img')?.src.includes(imageName)) {
+                        imageDisplay.innerHTML = 'Select an image';
+                        labelsDisplay.innerHTML = 'Select an image to view labels';
+                    }
+                    
+                    // Reload the image list
+                    loadImages();
+                } else {
+                    const error = await response.json();
+                    alert(`Failed to delete image: ${error.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                alert(`Error deleting image: ${error.message}`);
+            }
         }
 
         checkAuth();
