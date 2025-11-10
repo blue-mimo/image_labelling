@@ -209,6 +209,151 @@ class TestGetImage(unittest.TestCase):
                 
                 self.assertEqual(response['statusCode'], 200)
                 self.assertEqual(response['headers']['Content-Type'], expected_type)
+    
+    @patch('get_image.s3_client')
+    def test_image_scaling_parameters(self, mock_s3):
+        # Mock a simple JPEG image
+        jpeg_data = b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01test_image_data'
+        mock_response = Mock()
+        mock_response.read.return_value = jpeg_data
+        mock_s3.get_object.return_value = {'Body': mock_response}
+        
+        # Test with scaling parameters
+        event = {
+            'pathParameters': {'filename': 'test.jpg'},
+            'queryStringParameters': {'maxwidth': '100', 'maxheight': '100'}
+        }
+        
+        with patch('get_image.scale_image') as mock_scale:
+            mock_scale.return_value = b'scaled_image_data'
+            response = get_image.lambda_handler(event, {})
+            
+            self.assertEqual(response['statusCode'], 200)
+            mock_scale.assert_called_once_with(jpeg_data, 100, 100, 'image/jpeg')
+    
+    @patch('get_image.s3_client')
+    def test_invalid_scaling_parameters(self, mock_s3):
+        jpeg_data = b'\xff\xd8\xff\xe0test_data'
+        mock_response = Mock()
+        mock_response.read.return_value = jpeg_data
+        mock_s3.get_object.return_value = {'Body': mock_response}
+        
+        # Test with invalid scaling parameters
+        event = {
+            'pathParameters': {'filename': 'test.jpg'},
+            'queryStringParameters': {'maxwidth': 'invalid', 'maxheight': 'abc'}
+        }
+        
+        response = get_image.lambda_handler(event, {})
+        self.assertEqual(response['statusCode'], 200)  # Should still work without scaling
+    
+    @patch('get_image.s3_client')
+    def test_no_query_parameters(self, mock_s3):
+        jpeg_data = b'\xff\xd8\xff\xe0test_data'
+        mock_response = Mock()
+        mock_response.read.return_value = jpeg_data
+        mock_s3.get_object.return_value = {'Body': mock_response}
+        
+        event = {
+            'pathParameters': {'filename': 'test.jpg'},
+            'queryStringParameters': None
+        }
+        
+        response = get_image.lambda_handler(event, {})
+        self.assertEqual(response['statusCode'], 200)
+    
+    def test_scale_image_no_scaling_needed(self):
+        # Test scale_image function directly when no scaling is needed
+        with patch('get_image.Image') as mock_image_class:
+            mock_image = Mock()
+            mock_image.width = 100
+            mock_image.height = 100
+            mock_image_class.open.return_value = mock_image
+            
+            original_data = b'test_image_data'
+            result = get_image.scale_image(original_data, 200, 200, 'image/jpeg')
+            
+            # Should return original data when no scaling needed
+            self.assertEqual(result, original_data)
+    
+    def test_scale_image_with_scaling(self):
+        # Test scale_image function when scaling is needed
+        with patch('get_image.Image') as mock_image_class, \
+             patch('get_image.io.BytesIO') as mock_bytesio:
+            
+            mock_image = Mock()
+            mock_image.width = 200
+            mock_image.height = 200
+            mock_image.getexif.return_value = {}
+            mock_image.resize.return_value = mock_image
+            mock_image_class.open.return_value = mock_image
+            
+            mock_output = Mock()
+            mock_output.getvalue.return_value = b'scaled_data'
+            mock_bytesio.return_value = mock_output
+            
+            result = get_image.scale_image(b'original_data', 100, 100, 'image/jpeg')
+            
+            mock_image.resize.assert_called_once()
+            mock_image.save.assert_called_once()
+            self.assertEqual(result, b'scaled_data')
+    
+    def test_scale_image_with_exif_rotation(self):
+        # Test EXIF orientation handling
+        with patch('get_image.Image') as mock_image_class, \
+             patch('get_image.io.BytesIO') as mock_bytesio:
+            
+            mock_image = Mock()
+            mock_image.width = 200
+            mock_image.height = 100
+            mock_image.getexif.return_value = {274: 6}  # 90 degree rotation
+            mock_image.rotate.return_value = mock_image
+            mock_image.resize.return_value = mock_image
+            mock_image_class.open.return_value = mock_image
+            
+            mock_output = Mock()
+            mock_output.getvalue.return_value = b'rotated_scaled_data'
+            mock_bytesio.return_value = mock_output
+            
+            result = get_image.scale_image(b'original_data', 50, 50, 'image/jpeg')
+            
+            mock_image.rotate.assert_called_once_with(270, expand=True)
+            self.assertEqual(result, b'rotated_scaled_data')
+    
+    def test_scale_image_error_handling(self):
+        # Test error handling in scale_image
+        with patch('get_image.Image') as mock_image_class:
+            mock_image_class.open.side_effect = Exception('PIL error')
+            
+            original_data = b'test_data'
+            result = get_image.scale_image(original_data, 100, 100, 'image/jpeg')
+            
+            # Should return original data on error
+            self.assertEqual(result, original_data)
+    
+    def test_safe_int_function(self):
+        # Test the safe_int helper function indirectly
+        with patch('get_image.s3_client') as mock_s3:
+            jpeg_data = b'\xff\xd8\xff\xe0test_data'
+            mock_response = Mock()
+            mock_response.read.return_value = jpeg_data
+            mock_s3.get_object.return_value = {'Body': mock_response}
+            
+            # Test various invalid values
+            test_cases = [
+                {'maxwidth': None, 'maxheight': '50'},
+                {'maxwidth': '', 'maxheight': '50'},
+                {'maxwidth': 'abc', 'maxheight': '50'},
+            ]
+            
+            for params in test_cases:
+                with self.subTest(params=params):
+                    event = {
+                        'pathParameters': {'filename': 'test.jpg'},
+                        'queryStringParameters': params
+                    }
+                    response = get_image.lambda_handler(event, {})
+                    self.assertEqual(response['statusCode'], 200)
 
 
 if __name__ == '__main__':
