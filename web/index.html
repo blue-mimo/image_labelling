@@ -225,8 +225,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
@@ -532,7 +537,7 @@
 
         async function getAndDisplayLabels(imageName) {
             document.getElementById('labelsDisplay').innerHTML = '<div class="spinner"></div>';
-            
+
             try {
                 const response = await fetch(`${API_BASE}/labels/${imageName}`, {
                     headers: { 'Authorization': authToken }
@@ -645,9 +650,14 @@
                 item.classList.toggle('selected', item.dataset.image === imageName);
             });
 
-            getAndDisplayLabels(imageName);
-
-            getAndDisplayImage(imageName);
+            try {
+                await Promise.all([
+                    getAndDisplayLabels(imageName),
+                    getAndDisplayImage(imageName)
+                ]);
+            } catch (error) {
+                console.error('Error displaying image or labels:', error);
+            }
         }
 
         function triggerFileUpload() {

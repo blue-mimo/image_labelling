@@ -89,24 +89,20 @@ def lambda_handler(event, context):
             # Save the labels to DynamoDB
             image_name = key.replace("uploads/", "")
             labels = [
-                {"name": label["Name"], "confidence": Decimal(f"{label['Confidence']:.2f}")}
+                {"name": label["Name"], "confidence": Decimal(str(label["Confidence"]))}
                 for label in response["Labels"]
             ]
             logger.info(f"Detected {len(labels)} labels")
 
-            response = table.put_item(
+            table.put_item(
                 Item={
                     "image_name": image_name,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "labels": labels,
                 }
             )
-            
-            if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-                logger.info(f"Labels saved to DynamoDB for image: {image_name}")
-            else:
-                logger.error(f"Failed to save labels for {image_name}: HTTP {response['ResponseMetadata']['HTTPStatusCode']}")
-                raise Exception(f"DynamoDB put_item failed with status {response['ResponseMetadata']['HTTPStatusCode']}")
+
+            logger.info(f"Labels saved to DynamoDB for image: {image_name}")
 
         return {
             "statusCode": 200,

@@ -34,7 +34,15 @@ def lambda_handler(event, context):
         response = table.get_item(Key={"image_name": filename})
 
         if "Item" not in response:
-            raise Exception(f"No labels found for image: {filename}")
+            logger.warning(f"No labels found for image: {filename}")
+            return {
+                "statusCode": 404,
+                "headers": {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*",
+                },
+                "body": json.dumps({"error": f"No labels found for image: {filename}"}),
+            }
 
         item = response["Item"]
 
