@@ -94,15 +94,19 @@ def lambda_handler(event, context):
             ]
             logger.info(f"Detected {len(labels)} labels")
 
-            table.put_item(
+            response = table.put_item(
                 Item={
                     "image_name": image_name,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "labels": labels,
                 }
             )
-
-            logger.info(f"Labels saved to DynamoDB for image: {image_name}")
+            
+            if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+                logger.info(f"Labels saved to DynamoDB for image: {image_name}")
+            else:
+                logger.error(f"Failed to save labels for {image_name}: HTTP {response['ResponseMetadata']['HTTPStatusCode']}")
+                raise Exception(f"DynamoDB put_item failed with status {response['ResponseMetadata']['HTTPStatusCode']}")
 
         return {
             "statusCode": 200,
