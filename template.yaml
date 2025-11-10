@@ -7,10 +7,6 @@ Parameters:
     Type: String
     Default: bluestone-image-labeling-a08324be2c5f
     Description: Name of the existing S3 bucket for storing images
-  ForceUpdate:
-    Type: String
-    Default: "1"
-    Description: Force update parameter to trigger redeployment
 
 Globals:
   Function:

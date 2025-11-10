@@ -519,6 +519,37 @@ class TestLambdaFunction(unittest.TestCase):
         # Should have no calls for empty labels
         mock_table.put_item.assert_not_called()
 
+    @patch("process_added_image.get_dynamodb_resource")
+    @patch("process_added_image.get_rekognition_client")
+    @patch("process_added_image.get_s3_client")
+    def test_non_image_file_skipped(
+        self, mock_get_s3, mock_get_rekognition, mock_get_dynamodb
+    ):
+        """Test that non-image files are skipped."""
+        mock_get_s3.return_value = Mock()
+        mock_get_rekognition.return_value = Mock()
+        mock_get_dynamodb.return_value = Mock()
+
+        event = {
+            "Records": [
+                {
+                    "s3": {
+                        "bucket": {"name": "test-bucket"},
+                        "object": {"key": "uploads/document.txt"},
+                    }
+                }
+            ]
+        }
+
+        response = process_added_image.lambda_handler(event, Mock())
+
+        self.assertEqual(response["statusCode"], 200)
+        body = json.loads(response["body"])
+        self.assertEqual(body["processed_images"], 1)
+        
+        # Rekognition should not be called for non-image files
+        mock_get_rekognition.return_value.detect_labels.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
