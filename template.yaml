@@ -63,6 +63,7 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:PutObject
+                  - s3:DeleteObject
                   - s3:ListBucket
                 Resource:
                   - !Sub "arn:aws:s3:::${BucketName}/*"
@@ -75,6 +76,8 @@ Resources:
                 Action:
                   - dynamodb:PutItem
                   - dynamodb:GetItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:BatchWriteItem
                   - dynamodb:Query
                   - dynamodb:Scan
                 Resource:
@@ -162,6 +165,23 @@ Resources:
             Auth:
               Authorizer: CognitoAuthorizer
 
+  DeleteImageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: delete_image
+      CodeUri: lambda/
+      Handler: delete_image.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /image/{filename}
+            Method: DELETE
+            Auth:
+              Authorizer: CognitoAuthorizer
+
   # Cognito User Pool
   UserPool:
     Type: AWS::Cognito::UserPool
@@ -205,7 +225,7 @@ Resources:
         - "image/gif"
         - "multipart/form-data"
       Cors:
-        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowMethods: "'GET,POST,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowOrigin: "'*'"
       Auth:
