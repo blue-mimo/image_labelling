@@ -2,21 +2,25 @@ AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: "Image Labeling Application - S3 bucket with Lambda functions for automatic image labeling using Amazon Rekognition"
 
+Parameters:
+  BucketName:
+    Type: String
+    Default: bluestone-image-labeling-a08324be2c5f
+    Description: Name of the existing S3 bucket for storing images
+  ForceUpdate:
+    Type: String
+    Default: "1"
+    Description: Force update parameter to trigger redeployment
+
 Globals:
   Function:
     Runtime: python3.11
     Timeout: 60
     Environment:
       Variables:
-        BUCKET_NAME: bluestone-image-labeling-a08324be2c5f
+        BUCKET_NAME: !Ref BucketName
 
 Resources:
-  # S3 Bucket for storing images and labels
-  ImageBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: bluestone-image-labeling-a08324be2c5f
-
   # DynamoDB table for image labels
   ImageLabelsTable:
     Type: AWS::DynamoDB::Table
@@ -65,8 +69,8 @@ Resources:
                   - s3:PutObject
                   - s3:ListBucket
                 Resource:
-                  - "arn:aws:s3:::bluestone-image-labeling-a08324be2c5f/*"
-                  - "arn:aws:s3:::bluestone-image-labeling-a08324be2c5f"
+                  - !Sub "arn:aws:s3:::${BucketName}/*"
+                  - !Sub "arn:aws:s3:::${BucketName}"
               - Effect: Allow
                 Action:
                   - rekognition:DetectLabels
@@ -77,7 +81,7 @@ Resources:
                   - dynamodb:GetItem
                   - dynamodb:Query
                   - dynamodb:Scan
-                Resource: 
+                Resource:
                   - !GetAtt ImageLabelsTable.Arn
                   - !Sub "${ImageLabelsTable.Arn}/index/*"
 
@@ -90,43 +94,6 @@ Resources:
       Handler: process_added_image.lambda_handler
       Role: !GetAtt LambdaExecutionRole.Arn
       MemorySize: 512
-      Events:
-        S3UploadEvent:
-          Type: S3
-          Properties:
-            Bucket: !Ref ImageBucket
-            Events: s3:ObjectCreated:*
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: uploads/
-                  - Name: suffix
-                    Value: .jpg
-        S3UploadEventPng:
-          Type: S3
-          Properties:
-            Bucket: !Ref ImageBucket
-            Events: s3:ObjectCreated:*
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: uploads/
-                  - Name: suffix
-                    Value: .png
-        S3UploadEventJpeg:
-          Type: S3
-          Properties:
-            Bucket: !Ref ImageBucket
-            Events: s3:ObjectCreated:*
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: uploads/
-                  - Name: suffix
-                    Value: .jpeg
 
   ListImagesFunction:
     Type: AWS::Serverless::Function
@@ -271,8 +238,8 @@ Resources:
                   - s3:GetObject
                   - s3:ListBucket
                 Resource:
-                  - "arn:aws:s3:::bluestone-image-labeling-a08324be2c5f/*"
-                  - "arn:aws:s3:::bluestone-image-labeling-a08324be2c5f"
+                  - !Sub "arn:aws:s3:::${BucketName}/*"
+                  - !Sub "arn:aws:s3:::${BucketName}"
 
   # Amplify App
   AmplifyApp:
@@ -284,7 +251,7 @@ Resources:
       IAMServiceRole: !GetAtt AmplifyRole.Arn
       EnvironmentVariables:
         - Name: BUCKET_NAME
-          Value: !Ref ImageBucket
+          Value: !Ref BucketName
         - Name: API_URL
           Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod"
         - Name: USER_POOL_ID
@@ -303,7 +270,7 @@ Resources:
 Outputs:
   BucketName:
     Description: Name of the S3 bucket for images
-    Value: !Ref ImageBucket
+    Value: !Ref BucketName
     Export:
       Name: ImageLabelingBucketName
 

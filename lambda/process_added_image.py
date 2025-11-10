@@ -72,6 +72,10 @@ def lambda_handler(event, context):
             bucket = record["s3"]["bucket"]["name"]
             key = unquote_plus(record["s3"]["object"]["key"])
 
+            if not key.lower().endswith((".jpg", ".jpeg", ".png")):
+                logger.info(f"Skipping non-image file: {key}")
+                continue
+
             logger.info(f"Processing image: {key} from bucket: {bucket}")
             logger.debug(
                 f'Image size: {record["s3"]["object"].get("size", "unknown")} bytes'
