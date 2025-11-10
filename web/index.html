@@ -213,6 +213,21 @@
             background: #f0f0f0;
             border-radius: 5px;
         }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007cba;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 
@@ -516,6 +531,8 @@
 
 
         async function getAndDisplayLabels(imageName) {
+            document.getElementById('labelsDisplay').innerHTML = '<div class="spinner"></div>';
+            
             try {
                 const response = await fetch(`${API_BASE}/labels/${imageName}`, {
                     headers: { 'Authorization': authToken }
@@ -554,7 +571,7 @@
         }
 
         async function getAndDisplayImage(imageName) {
-            document.getElementById('imageDisplay').innerHTML = '<p>Loading image...</p>';
+            document.getElementById('imageDisplay').innerHTML = '<div class="spinner"></div>';
 
             try {
                 const displayElement = document.getElementById('imageDisplay');
