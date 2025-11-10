@@ -12,16 +12,21 @@ This project provides an AWS CloudFormation template that creates:
 
 ## Architecture
 
-1. **S3 Bucket**: Stores uploaded images and generated label files
+1. **S3 Bucket**: Stores uploaded images
    - Upload images to: `s3://bluestone-image-labeling-a08324be2c5f/uploads/`
-   - Labels are saved to: `s3://bluestone-image-labeling-a08324be2c5f/labels/`
+   - Labels are stored in DynamoDB for efficient querying
 
 2. **Lambda Function**: Processes images automatically
    - Triggered on image upload (`.jpg`, `.jpeg`, `.png` files)
    - Uses Amazon Rekognition to detect labels
-   - Saves results as JSON files in the S3 bucket
+   - Saves results to DynamoDB table with GSI for efficient querying
 
-3. **IAM Role**: Provides necessary permissions for Lambda to access S3 and Rekognition
+3. **DynamoDB Table**: Stores image labels with Global Secondary Index
+   - Main table: `image_labels` with `image_name` as primary key
+   - GSI: `label-index` with `label_name` as key for efficient filtering
+   - Individual label records enable fast label-based queries
+
+4. **IAM Role**: Provides necessary permissions for Lambda to access S3, Rekognition, and DynamoDB
 
 ## Deployment
 
@@ -84,28 +89,34 @@ After deployment, access the web application via the Amplify URL (shown in stack
 # Upload an image
 aws s3 cp your-image.jpg s3://bluestone-image-labeling-a08324be2c5f/uploads/your-image.jpg
 
-# Labels are automatically generated and saved to:
-# s3://bluestone-image-labeling-a08324be2c5f/labels/your-image.json
+# Labels are automatically generated and saved to DynamoDB
+# Query labels using the API endpoints or DynamoDB console
 ```
 
-## Label Output Format
+## DynamoDB Structure
 
-The Lambda function generates JSON files with the following structure:
+The Lambda function stores labels in DynamoDB with two record types:
 
+**Main Image Record:**
 ```json
 {
-  "image": "uploads/your-image.jpg",
+  "image_name": "your-image.jpg",
   "timestamp": "2024-11-03T13:45:30.123456",
   "labels": [
-    {
-      "name": "Dog",
-      "confidence": 98.5
-    },
-    {
-      "name": "Pet",
-      "confidence": 97.3
-    }
+    {"name": "Dog", "confidence": 98.5},
+    {"name": "Pet", "confidence": 97.3}
   ]
+}
+```
+
+**Individual Label Records (for GSI querying):**
+```json
+{
+  "image_name": "label#your-image.jpg#dog",
+  "label_name": "dog",
+  "original_image": "your-image.jpg",
+  "confidence": 98.5,
+  "timestamp": "2024-11-03T13:45:30.123456"
 }
 ```
 
@@ -113,10 +124,12 @@ The Lambda function generates JSON files with the following structure:
 
 - `template.yaml`: AWS SAM template defining all AWS resources
 - `lambda/`: Directory containing Lambda function code
-  - `process_added_image.py`: Processes uploaded images with Rekognition
-  - `list_images.py`: Lists images from S3 uploads folder
-  - `get_labels.py`: Retrieves labels for specific images
+  - `process_added_image.py`: Processes uploaded images with Rekognition, stores in DynamoDB
+  - `list_images.py`: Lists images with DynamoDB-based filtering
+  - `get_labels.py`: Retrieves labels for specific images from DynamoDB
   - `test_*.py`: Unit tests for Lambda functions
+- `scripts/`: Migration and utility scripts
+  - `migrate_to_gsi.py`: Migrates existing data to GSI-compatible structure
 - `web/`: Web application files
   - `index.html`: Frontend interface
   - `config.js`: Configuration file (updated during build)

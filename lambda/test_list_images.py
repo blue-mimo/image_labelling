@@ -55,25 +55,21 @@ class TestListImages(unittest.TestCase):
         self.assertEqual(body['pagination']['total'], 25)
         self.assertEqual(body['pagination']['totalPages'], 3)
     
+    @patch('list_images.table')
     @patch('list_images.s3_client')
-    def test_filtering(self, mock_s3):
+    def test_filtering(self, mock_s3, mock_table):
         mock_s3.list_objects_v2.return_value = {
             'Contents': [{'Key': 'uploads/dog.jpg'}, {'Key': 'uploads/cat.jpg'}]
         }
         
-        def mock_get_object(Bucket, Key):
-            mock_body = Mock()
-            if 'dog' in Key:
-                mock_body.read.return_value = json.dumps({
-                    'labels': [{'name': 'Dog', 'confidence': 95.0}]
-                }).encode('utf-8')
-            else:
-                mock_body.read.return_value = json.dumps({
-                    'labels': [{'name': 'Cat', 'confidence': 90.0}]
-                }).encode('utf-8')
-            return {'Body': mock_body}
-        
-        mock_s3.get_object.side_effect = mock_get_object
+        # Mock DynamoDB query response
+        mock_table.query.return_value = {
+            'Items': [{
+                'label_name': 'dog',
+                'original_image': 'dog.jpg',
+                'confidence': 95.0
+            }]
+        }
         
         event = {'queryStringParameters': {'filters': 'dog'}}
         response = list_images.lambda_handler(event, {})
@@ -81,6 +77,9 @@ class TestListImages(unittest.TestCase):
         body = json.loads(response['body'])
         self.assertEqual(len(body['images']), 1)
         self.assertIn('dog.jpg', body['images'])
+        
+        # Verify DynamoDB query was called
+        mock_table.query.assert_called_once()
     
     @patch('list_images.s3_client')
     def test_default_parameters(self, mock_s3):
@@ -106,35 +105,40 @@ class TestListImages(unittest.TestCase):
         body = json.loads(response['body'])
         self.assertEqual(len(body['images']), 1)
     
+    @patch('list_images.table')
     @patch('list_images.s3_client')
-    def test_multiple_filters(self, mock_s3):
+    def test_multiple_filters(self, mock_s3, mock_table):
         mock_s3.list_objects_v2.return_value = {
             'Contents': [{'Key': 'uploads/animal.jpg'}]
         }
         
-        mock_body = Mock()
-        mock_body.read.return_value = json.dumps({
-            'labels': [{'name': 'Dog'}, {'name': 'Pet'}]
-        }).encode('utf-8')
-        mock_s3.get_object.return_value = {'Body': mock_body}
+        # Mock DynamoDB query responses for multiple filters
+        def mock_query(**kwargs):
+            label = kwargs['ExpressionAttributeValues'][':label']
+            if label == 'dog':
+                return {'Items': [{'label_name': 'dog', 'original_image': 'animal.jpg'}]}
+            elif label == 'cat':
+                return {'Items': []}
+            return {'Items': []}
+        
+        mock_table.query.side_effect = mock_query
         
         event = {'queryStringParameters': {'filters': 'dog,cat'}}
         response = list_images.lambda_handler(event, {})
         
         body = json.loads(response['body'])
         self.assertEqual(len(body['images']), 1)
+        self.assertEqual(mock_table.query.call_count, 2)
     
+    @patch('list_images.table')
     @patch('list_images.s3_client')
-    def test_filter_no_match(self, mock_s3):
+    def test_filter_no_match(self, mock_s3, mock_table):
         mock_s3.list_objects_v2.return_value = {
             'Contents': [{'Key': 'uploads/test.jpg'}]
         }
         
-        mock_body = Mock()
-        mock_body.read.return_value = json.dumps({
-            'labels': [{'name': 'Car'}]
-        }).encode('utf-8')
-        mock_s3.get_object.return_value = {'Body': mock_body}
+        # Mock DynamoDB query with no results
+        mock_table.query.return_value = {'Items': []}
         
         event = {'queryStringParameters': {'filters': 'dog'}}
         response = list_images.lambda_handler(event, {})
@@ -142,13 +146,15 @@ class TestListImages(unittest.TestCase):
         body = json.loads(response['body'])
         self.assertEqual(len(body['images']), 0)
     
+    @patch('list_images.table')
     @patch('list_images.s3_client')
-    def test_filter_label_error(self, mock_s3):
+    def test_filter_label_error(self, mock_s3, mock_table):
         mock_s3.list_objects_v2.return_value = {
             'Contents': [{'Key': 'uploads/test.jpg'}]
         }
         
-        mock_s3.get_object.side_effect = Exception('Label not found')
+        # Mock DynamoDB query error
+        mock_table.query.side_effect = Exception('DynamoDB error')
         
         event = {'queryStringParameters': {'filters': 'dog'}}
         response = list_images.lambda_handler(event, {})

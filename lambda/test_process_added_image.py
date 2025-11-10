@@ -76,10 +76,12 @@ class TestLambdaFunction(unittest.TestCase):
             MinConfidence=75
         )
         
-        # Verify DynamoDB put_item was called
-        self.assertTrue(mock_table.put_item.called)
-        call_args = mock_table.put_item.call_args[1]
-        item = call_args['Item']
+        # Verify DynamoDB put_item was called (main record + 3 label records = 4 calls)
+        self.assertEqual(mock_table.put_item.call_count, 4)
+        
+        # Check main image record (first call)
+        first_call = mock_table.put_item.call_args_list[0][1]
+        item = first_call['Item']
         self.assertEqual(item['image_name'], 'test-image.jpg')
         self.assertIn('timestamp', item)
         self.assertEqual(len(item['labels']), 3)
@@ -87,6 +89,16 @@ class TestLambdaFunction(unittest.TestCase):
         # Confidence should be Decimal
         from decimal import Decimal
         self.assertEqual(item['labels'][0]['confidence'], Decimal('98.50'))
+        
+        # Check label records (subsequent calls)
+        label_calls = mock_table.put_item.call_args_list[1:]
+        self.assertEqual(len(label_calls), 3)
+        
+        # Verify first label record
+        label_item = label_calls[0][1]['Item']
+        self.assertEqual(label_item['label_name'], 'dog')
+        self.assertEqual(label_item['original_image'], 'test-image.jpg')
+        self.assertEqual(label_item['confidence'], Decimal('98.50'))
     
     @patch('process_added_image.get_dynamodb_resource')
     @patch('process_added_image.get_rekognition_client')
@@ -125,9 +137,9 @@ class TestLambdaFunction(unittest.TestCase):
         # Verify the response is successful
         self.assertEqual(response['statusCode'], 200)
         
-        # Verify the decoded key was used in DynamoDB
-        call_args = mock_table.put_item.call_args[1]
-        item = call_args['Item']
+        # Verify the decoded key was used in DynamoDB (check main record - first call)
+        first_call = mock_table.put_item.call_args_list[0][1]
+        item = first_call['Item']
         self.assertEqual(item['image_name'], 'my image.jpg')
     
     @patch('process_added_image.get_dynamodb_resource')
@@ -178,8 +190,8 @@ class TestLambdaFunction(unittest.TestCase):
         # Verify Rekognition was called twice
         self.assertEqual(mock_rekognition.detect_labels.call_count, 2)
         
-        # Verify DynamoDB put_item was called twice
-        self.assertEqual(mock_table.put_item.call_count, 2)
+        # Verify DynamoDB put_item was called (2 main records + 2 label records = 4 calls)
+        self.assertEqual(mock_table.put_item.call_count, 4)
     
     @patch('process_added_image.get_dynamodb_resource')
     @patch('process_added_image.get_rekognition_client')
@@ -295,7 +307,8 @@ class TestLambdaFunction(unittest.TestCase):
         # Verify successful response even with no labels
         self.assertEqual(response['statusCode'], 200)
         
-        # Verify empty labels were saved to DynamoDB
+        # Verify empty labels were saved to DynamoDB (only main record, no label records)
+        self.assertEqual(mock_table.put_item.call_count, 1)
         call_args = mock_table.put_item.call_args[1]
         item = call_args['Item']
         self.assertEqual(len(item['labels']), 0)
@@ -324,6 +337,9 @@ class TestLambdaFunction(unittest.TestCase):
         
         for filename in test_files:
             with self.subTest(filename=filename):
+                # Reset mock for each iteration
+                mock_table.put_item.reset_mock()
+                
                 event = {
                     'Records': [
                         {
@@ -340,9 +356,11 @@ class TestLambdaFunction(unittest.TestCase):
                 
                 self.assertEqual(response['statusCode'], 200)
                 
-                # Verify correct image name stored in DynamoDB
-                call_args = mock_table.put_item.call_args[1]
-                item = call_args['Item']
+                # Verify correct image name stored in DynamoDB (main record + 1 label record = 2 calls)
+                self.assertEqual(mock_table.put_item.call_count, 2)
+                # Check main record (first call)
+                first_call = mock_table.put_item.call_args_list[0][1]
+                item = first_call['Item']
                 self.assertEqual(item['image_name'], filename)
     
     def test_get_s3_client(self):
@@ -436,9 +454,17 @@ class TestLambdaFunction(unittest.TestCase):
         
         process_added_image.lambda_handler(event, Mock())
         
-        call_args = mock_table.put_item.call_args[1]
+        # Should have 2 calls: main record + 1 label record
+        self.assertEqual(mock_table.put_item.call_count, 2)
+        
+        # Check main record
+        main_call = mock_table.put_item.call_args_list[0][1]
         from decimal import Decimal
-        self.assertEqual(call_args['Item']['labels'][0]['confidence'], Decimal('99.123456789'))
+        self.assertEqual(main_call['Item']['labels'][0]['confidence'], Decimal('99.123456789'))
+        
+        # Check label record
+        label_call = mock_table.put_item.call_args_list[1][1]
+        self.assertEqual(label_call['Item']['confidence'], Decimal('99.123456789'))
     
     @patch('process_added_image.get_dynamodb_resource')
     @patch('process_added_image.get_rekognition_client')
@@ -485,6 +511,8 @@ class TestLambdaFunction(unittest.TestCase):
         response = process_added_image.lambda_handler(event, Mock())
         
         self.assertEqual(response['statusCode'], 200)
+        # Should have only 1 call for empty labels
+        self.assertEqual(mock_table.put_item.call_count, 1)
         call_args = mock_table.put_item.call_args[1]
         self.assertEqual(call_args['Item']['image_name'], 'subfolder/image.jpg')
 

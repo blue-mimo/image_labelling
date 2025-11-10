@@ -94,6 +94,7 @@ def lambda_handler(event, context):
             ]
             logger.info(f"Detected {len(labels)} labels")
 
+            # Store main image record
             table.put_item(
                 Item={
                     "image_name": image_name,
@@ -101,6 +102,19 @@ def lambda_handler(event, context):
                     "labels": labels,
                 }
             )
+
+            # Store individual label records for GSI querying
+            timestamp = datetime.now(timezone.utc).isoformat()
+            for label in response["Labels"]:
+                table.put_item(
+                    Item={
+                        "image_name": f"label#{image_name}#{label['Name'].lower()}",
+                        "label_name": label["Name"].lower(),
+                        "original_image": image_name,
+                        "confidence": Decimal(str(label["Confidence"])),
+                        "timestamp": timestamp,
+                    }
+                )
 
             logger.info(f"Labels saved to DynamoDB for image: {image_name}")
 

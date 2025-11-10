@@ -9,6 +9,8 @@ logger.setLevel(logging.DEBUG)
 
 BUCKET_NAME = "bluestone-image-labeling-a08324be2c5f"
 s3_client = boto3.client("s3")
+dynamodb = boto3.resource("dynamodb")
+table = dynamodb.Table("image_labels")
 
 
 def lambda_handler(event, context):
@@ -35,22 +37,28 @@ def lambda_handler(event, context):
         
         # Apply filters if provided
         if filters:
-            filtered_images = []
-            for image in all_images:
+            # Use DynamoDB GSI to query by labels
+            filtered_images = set()
+            for filter_term in filters:
                 try:
-                    # Get labels for this image
-                    label_key = f"labels/{image.rsplit('.', 1)[0]}.json"
-                    label_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=label_key)
-                    labels_data = json.loads(label_obj["Body"].read().decode("utf-8"))
+                    response = table.query(
+                        IndexName="label-index",
+                        KeyConditionExpression="label_name = :label",
+                        ExpressionAttributeValues={
+                            ":label": filter_term
+                        }
+                    )
                     
-                    # Check if any filter matches any label
-                    image_labels = [label["name"].lower() for label in labels_data.get("labels", [])]
-                    if any(any(filter_term in label for label in image_labels) for filter_term in filters):
-                        filtered_images.append(image)
+                    # Extract original image names from label records
+                    for item in response.get("Items", []):
+                        if "original_image" in item:
+                            filtered_images.add(item["original_image"])
+                            
                 except Exception as e:
-                    logger.warning(f"Could not get labels for {image}: {e}")
-                    continue
-            images = filtered_images
+                    logger.warning(f"Could not query labels for filter '{filter_term}': {e}")
+                    
+            # Filter S3 images to only include those with matching labels
+            images = [img for img in all_images if img in filtered_images]
         else:
             images = all_images
         
