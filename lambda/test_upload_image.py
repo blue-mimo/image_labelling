@@ -580,7 +580,7 @@ class TestUploadImage(unittest.TestCase):
         result = decode_request_body(event)
 
         self.assertEqual(result, b"")
-    
+
     def test_parse_multipart_data_no_end_boundary(self):
         """Test multipart data where data_end <= data_start (edge case for line 190)"""
         boundary = "test"
@@ -591,9 +591,9 @@ class TestUploadImage(unittest.TestCase):
             b"\r\n"
             b"file_data_without_proper_ending"
         )
-        
+
         result = parse_multipart_data(body, f"multipart/form-data; boundary={boundary}")
-        
+
         # Should still extract the data using the else branch (data_start:)
         self.assertEqual(result[0], b"file_data_without_proper_ending")
         self.assertEqual(result[1], "test.jpg")

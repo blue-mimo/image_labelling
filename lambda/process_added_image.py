@@ -6,7 +6,6 @@ This function is triggered when an image is uploaded to the S3 bucket.
 import json
 import boto3
 import logging
-from datetime import datetime, timezone
 from urllib.parse import unquote_plus
 from decimal import Decimal
 
@@ -73,6 +72,10 @@ def lambda_handler(event, context):
             bucket = record["s3"]["bucket"]["name"]
             key = unquote_plus(record["s3"]["object"]["key"])
 
+            if not key.lower().endswith((".jpg", ".jpeg", ".png")):
+                logger.info(f"Skipping non-image file: {key}")
+                continue
+
             logger.info(f"Processing image: {key} from bucket: {bucket}")
             logger.debug(
                 f'Image size: {record["s3"]["object"].get("size", "unknown")} bytes'
@@ -88,19 +91,18 @@ def lambda_handler(event, context):
 
             # Save the labels to DynamoDB
             image_name = key.replace("uploads/", "")
-            labels = [
-                {"name": label["Name"], "confidence": Decimal(str(label["Confidence"]))}
-                for label in response["Labels"]
-            ]
-            logger.info(f"Detected {len(labels)} labels")
 
-            table.put_item(
-                Item={
-                    "image_name": image_name,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "labels": labels,
-                }
-            )
+            logger.info(f"Detected {len(response['Labels'])} labels")
+
+            # Store individual label records with composite key
+            for label in response["Labels"]:
+                table.put_item(
+                    Item={
+                        "image_name": image_name,
+                        "label_name": label["Name"].lower(),
+                        "confidence": Decimal(str(label["Confidence"])),
+                    }
+                )
 
             logger.info(f"Labels saved to DynamoDB for image: {image_name}")
 
