@@ -63,6 +63,7 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:PutObject
+                  - s3:DeleteObject
                   - s3:ListBucket
                 Resource:
                   - !Sub "arn:aws:s3:::${BucketName}/*"
@@ -75,6 +76,7 @@ Resources:
                 Action:
                   - dynamodb:PutItem
                   - dynamodb:GetItem
+                  - dynamodb:DeleteItem
                   - dynamodb:Query
                   - dynamodb:Scan
                 Resource:
@@ -159,6 +161,23 @@ Resources:
             RestApiId: !Ref ApiGateway
             Path: /upload_image
             Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  DeleteImageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: delete_image
+      CodeUri: lambda/
+      Handler: delete_image.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /image/{filename}
+            Method: DELETE
             Auth:
               Authorizer: CognitoAuthorizer
 
