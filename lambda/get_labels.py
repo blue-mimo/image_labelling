@@ -30,10 +30,14 @@ def lambda_handler(event, context):
         logger.info(f"Getting labels for image: {filename}")
         logger.debug(f"DynamoDB key: {filename}")
 
-        logger.debug("Calling DynamoDB get_item for labels")
-        response = table.get_item(Key={"image_name": filename})
+        logger.debug("Calling DynamoDB query for labels")
+        response = table.query(
+            KeyConditionExpression="image_name = :image_name",
+            ExpressionAttributeValues={":image_name": filename},
+        )
 
-        if "Item" not in response:
+        items = response.get("Items", [])
+        if not items:
             logger.warning(f"No labels found for image: {filename}")
             return {
                 "statusCode": 404,
@@ -44,19 +48,16 @@ def lambda_handler(event, context):
                 "body": json.dumps({"error": f"No labels found for image: {filename}"}),
             }
 
-        item = response["Item"]
-
         converted_labels = [
-            {"name": label["name"], "confidence": float(label["confidence"])}
-            for label in item["labels"]
+            {"name": item["label_name"], "confidence": float(item["confidence"])}
+            for item in items
         ]
 
         labels = {
             "image": f"uploads/{filename}",
-            "timestamp": item["timestamp"],
             "labels": converted_labels,
         }
-        logger.debug(f"Retrieved labels: {len(labels.get('labels', []))} items")
+        logger.debug(f"Retrieved labels: {len(converted_labels)} items")
 
         return {
             "statusCode": 200,

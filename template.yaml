@@ -30,6 +30,8 @@ Resources:
       KeySchema:
         - AttributeName: image_name
           KeyType: HASH
+        - AttributeName: label_name
+          KeyType: RANGE
       GlobalSecondaryIndexes:
         - IndexName: label-index
           KeySchema:

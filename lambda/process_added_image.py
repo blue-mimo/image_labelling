@@ -6,7 +6,6 @@ This function is triggered when an image is uploaded to the S3 bucket.
 import json
 import boto3
 import logging
-from datetime import datetime, timezone
 from urllib.parse import unquote_plus
 from decimal import Decimal
 
@@ -88,31 +87,16 @@ def lambda_handler(event, context):
 
             # Save the labels to DynamoDB
             image_name = key.replace("uploads/", "")
-            labels = [
-                {"name": label["Name"], "confidence": Decimal(str(label["Confidence"]))}
-                for label in response["Labels"]
-            ]
-            logger.info(f"Detected {len(labels)} labels")
 
-            # Store main image record
-            table.put_item(
-                Item={
-                    "image_name": image_name,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "labels": labels,
-                }
-            )
+            logger.info(f"Detected {len(response['Labels'])} labels")
 
-            # Store individual label records for GSI querying
-            timestamp = datetime.now(timezone.utc).isoformat()
+            # Store individual label records with composite key
             for label in response["Labels"]:
                 table.put_item(
                     Item={
-                        "image_name": f"label#{image_name}#{label['Name'].lower()}",
+                        "image_name": image_name,
                         "label_name": label["Name"].lower(),
-                        "original_image": image_name,
                         "confidence": Decimal(str(label["Confidence"])),
-                        "timestamp": timestamp,
                     }
                 )
 

@@ -21,10 +21,10 @@ This project provides an AWS CloudFormation template that creates:
    - Uses Amazon Rekognition to detect labels
    - Saves results to DynamoDB table with GSI for efficient querying
 
-3. **DynamoDB Table**: Stores image labels with Global Secondary Index
-   - Main table: `image_labels` with `image_name` as primary key
+3. **DynamoDB Table**: Stores image labels with composite key and Global Secondary Index
+   - Composite key: `image_name` (partition key) + `label_name` (sort key)
    - GSI: `label-index` with `label_name` as key for efficient filtering
-   - Individual label records enable fast label-based queries
+   - Flattened schema eliminates redundancy and enables fast queries
 
 4. **IAM Role**: Provides necessary permissions for Lambda to access S3, Rekognition, and DynamoDB
 
@@ -95,30 +95,21 @@ aws s3 cp your-image.jpg s3://bluestone-image-labeling-a08324be2c5f/uploads/your
 
 ## DynamoDB Structure
 
-The Lambda function stores labels in DynamoDB with two record types:
+The Lambda function stores labels in DynamoDB using a flattened schema with composite keys:
 
-**Main Image Record:**
+**Label Records (one per label):**
 ```json
 {
   "image_name": "your-image.jpg",
-  "timestamp": "2024-11-03T13:45:30.123456",
-  "labels": [
-    {"name": "Dog", "confidence": 98.5},
-    {"name": "Pet", "confidence": 97.3}
-  ]
+  "label_name": "dog",
+  "confidence": 98.5
 }
 ```
 
-**Individual Label Records (for GSI querying):**
-```json
-{
-  "image_name": "label#your-image.jpg#dog",
-  "label_name": "dog",
-  "original_image": "your-image.jpg",
-  "confidence": 98.5,
-  "timestamp": "2024-11-03T13:45:30.123456"
-}
-```
+**Key Structure:**
+- **Partition Key**: `image_name` (e.g., "your-image.jpg")
+- **Sort Key**: `label_name` (e.g., "dog")
+- **GSI**: `label-index` on `label_name` for filtering by labels
 
 ## Files
 
@@ -129,7 +120,8 @@ The Lambda function stores labels in DynamoDB with two record types:
   - `get_labels.py`: Retrieves labels for specific images from DynamoDB
   - `test_*.py`: Unit tests for Lambda functions
 - `scripts/`: Migration and utility scripts
-  - `migrate_to_gsi.py`: Migrates existing data to GSI-compatible structure
+  - `migrate_to_flattened_with_timestamps.py`: Migrates from nested to flattened schema (legacy)
+  - `migrate_remove_timestamps.py`: Removes timestamps from existing flattened records
 - `web/`: Web application files
   - `index.html`: Frontend interface
   - `config.js`: Configuration file (updated during build)
