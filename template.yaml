@@ -41,6 +41,19 @@ Resources:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
 
+  # DynamoDB table for label counts
+  LabelCountsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: label_counts
+      AttributeDefinitions:
+        - AttributeName: label_name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: label_name
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
   # IAM Role for Lambda Functions
   LambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -83,6 +96,7 @@ Resources:
                 Resource:
                   - !GetAtt ImageLabelsTable.Arn
                   - !Sub "${ImageLabelsTable.Arn}/index/*"
+                  - !GetAtt LabelCountsTable.Arn
 
   # SAM Lambda Functions
   ProcessAddedImageFunction:
