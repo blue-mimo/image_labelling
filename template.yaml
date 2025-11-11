@@ -211,6 +211,20 @@ Resources:
             Auth:
               Authorizer: CognitoAuthorizer
 
+  UpdatePrefixSuggestionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: update_prefix_suggestions
+      CodeUri: lambda/
+      Handler: update_prefix_suggestions.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        ScheduleEvent:
+          Type: Schedule
+          Properties:
+            Schedule: rate(30 minutes)
+            Enabled: true
+
   # Cognito User Pool
   UserPool:
     Type: AWS::Cognito::UserPool
