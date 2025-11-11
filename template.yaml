@@ -54,6 +54,19 @@ Resources:
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
 
+  # DynamoDB table for prefix suggestions
+  PrefixSuggestionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: prefix_suggestions
+      AttributeDefinitions:
+        - AttributeName: prefix
+          AttributeType: S
+      KeySchema:
+        - AttributeName: prefix
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
   # IAM Role for Lambda Functions
   LambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -97,6 +110,7 @@ Resources:
                   - !GetAtt ImageLabelsTable.Arn
                   - !Sub "${ImageLabelsTable.Arn}/index/*"
                   - !GetAtt LabelCountsTable.Arn
+                  - !GetAtt PrefixSuggestionsTable.Arn
 
   # SAM Lambda Functions
   ProcessAddedImageFunction:
