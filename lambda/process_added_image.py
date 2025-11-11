@@ -64,6 +64,7 @@ def lambda_handler(event, context):
         rekognition = get_rekognition_client()
         dynamodb = get_dynamodb_resource()
         table = dynamodb.Table("image_labels")
+        counts_table = dynamodb.Table("label_counts")
         logger.debug("AWS clients initialized")
 
         # Parse the S3 event
@@ -94,14 +95,25 @@ def lambda_handler(event, context):
 
             logger.info(f"Detected {len(response['Labels'])} labels")
 
-            # Store individual label records with composite key
+            # Store individual label records with composite key and update counts
             for label in response["Labels"]:
+                label_name = label["Name"].lower()
+                
+                # Store label record
                 table.put_item(
                     Item={
                         "image_name": image_name,
-                        "label_name": label["Name"].lower(),
+                        "label_name": label_name,
                         "confidence": Decimal(str(label["Confidence"])),
                     }
+                )
+                
+                # Increment label count
+                counts_table.update_item(
+                    Key={"label_name": label_name},
+                    UpdateExpression="ADD #count :inc",
+                    ExpressionAttributeNames={"#count": "count"},
+                    ExpressionAttributeValues={":inc": 1}
                 )
 
             logger.info(f"Labels saved to DynamoDB for image: {image_name}")

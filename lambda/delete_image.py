@@ -13,12 +13,13 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def delete_image_labels(table, filename):
+def delete_image_labels(table, counts_table, filename):
     """
-    Delete all label entries for an image from DynamoDB.
+    Delete all label entries for an image from DynamoDB and update counts.
     
     Args:
-        table: DynamoDB table resource
+        table: DynamoDB table resource for image labels
+        counts_table: DynamoDB table resource for label counts
         filename: Name of the image file
         
     Returns:
@@ -37,14 +38,30 @@ def delete_image_labels(table, filename):
     logger.info(f"Found {labels_count} label entries to delete")
     
     if labels_count > 0:
+        # Delete label entries and decrement counts
         with table.batch_writer() as batch:
             for item in response['Items']:
+                label_name = item['label_name']
+                
+                # Delete the label entry
                 batch.delete_item(
                     Key={
                         'image_name': item['image_name'],
-                        'label_name': item['label_name']
+                        'label_name': label_name
                     }
                 )
+                
+                # Decrement count
+                try:
+                    counts_table.update_item(
+                        Key={'label_name': label_name},
+                        UpdateExpression='ADD #count :dec',
+                        ExpressionAttributeNames={'#count': 'count'},
+                        ExpressionAttributeValues={':dec': -1}
+                    )
+                except ClientError:
+                    pass  # Continue if count update fails
+                    
         logger.info(f"Successfully deleted {labels_count} label entries from DynamoDB")
     else:
         logger.info("No label entries found to delete")
@@ -125,6 +142,7 @@ def lambda_handler(event, context):
             dynamodb = boto3.resource('dynamodb')
             s3_client = boto3.client('s3')
             table = dynamodb.Table('image_labels')
+            counts_table = dynamodb.Table('label_counts')
             logger.debug("AWS clients initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize AWS clients: {e}")
@@ -139,7 +157,7 @@ def lambda_handler(event, context):
         
         # First, delete all label entries for this image from DynamoDB
         try:
-            labels_count = delete_image_labels(table, filename)
+            labels_count = delete_image_labels(table, counts_table, filename)
         except ClientError as e:
             error_code = e.response.get('Error', {}).get('Code', 'Unknown')
             logger.error(f"DynamoDB error ({error_code}): {e}")
