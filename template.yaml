@@ -225,6 +225,23 @@ Resources:
             Schedule: rate(30 minutes)
             Enabled: true
 
+  SuggestFiltersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: suggest_filters
+      CodeUri: lambda/
+      Handler: suggest_filters.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /suggest_filters
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+
   # Cognito User Pool
   UserPool:
     Type: AWS::Cognito::UserPool
