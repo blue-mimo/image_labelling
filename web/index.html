@@ -32,6 +32,26 @@
             box-sizing: border-box;
         }
 
+        .autocomplete-dropdown {
+            position: absolute;
+            background: white;
+            border: 1px solid #ccc;
+            border-top: none;
+            max-height: 200px;
+            overflow-y: auto;
+            width: calc(100% - 20px);
+            z-index: 1000;
+        }
+
+        .autocomplete-item {
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        .autocomplete-item:hover {
+            background: #f0f0f0;
+        }
+
         .active-filters {
             grid-column: 1;
             grid-row: 2;
@@ -431,9 +451,10 @@
                     <button onclick="logout()" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 3px;">Logout</button>
                 </div>
                 <div class="container">
-                    <div class="filter-search">
+                    <div class="filter-search" style="position: relative;">
                         <h4>Filter Search Box</h4>
-                        <input type="text" id="filterInput" placeholder="Search labels..." onkeypress="handleFilterKeypress(event)">
+                        <input type="text" id="filterInput" placeholder="Search labels..." oninput="handleFilterInput(event)" onkeydown="handleFilterKeydown(event)">
+                        <div id="autocompleteDropdown" class="autocomplete-dropdown" style="display: none;"></div>
                         <button onclick="addFilter()" style="margin-top: 5px; padding: 5px 10px;">Add Filter</button>
                     </div>
                     <div class="active-filters">
@@ -553,10 +574,74 @@
             loadImages();
         }
 
-        function handleFilterKeypress(event) {
-            if (event.key === 'Enter') {
-                addFilter();
+        let selectedSuggestionIndex = -1;
+        let currentSuggestions = [];
+
+        async function handleFilterInput(event) {
+            const input = event.target.value.trim().toLowerCase();
+            const dropdown = document.getElementById('autocompleteDropdown');
+
+            if (input.length === 0) {
+                dropdown.style.display = 'none';
+                return;
             }
+
+            try {
+                const response = await fetch(`${API_BASE}/suggest_filters?prefix=${encodeURIComponent(input)}`, {
+                    headers: { 'Authorization': authToken }
+                });
+                const suggestions = await response.json();
+                currentSuggestions = suggestions;
+                selectedSuggestionIndex = -1;
+
+                if (suggestions.length > 0) {
+                    dropdown.innerHTML = suggestions.map((suggestion, index) =>
+                        `<div class="autocomplete-item" data-index="${index}" onclick="selectSuggestion('${suggestion}')">${suggestion}</div>`
+                    ).join('');
+                    dropdown.style.display = 'block';
+                } else {
+                    dropdown.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error fetching suggestions:', error);
+                dropdown.style.display = 'none';
+            }
+        }
+
+        function handleFilterKeydown(event) {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            const items = dropdown.querySelectorAll('.autocomplete-item');
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, items.length - 1);
+                updateSelectedSuggestion(items);
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1);
+                updateSelectedSuggestion(items);
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                if (selectedSuggestionIndex >= 0 && currentSuggestions[selectedSuggestionIndex]) {
+                    selectSuggestion(currentSuggestions[selectedSuggestionIndex]);
+                } else {
+                    addFilter();
+                }
+            } else if (event.key === 'Escape') {
+                dropdown.style.display = 'none';
+            }
+        }
+
+        function updateSelectedSuggestion(items) {
+            items.forEach((item, index) => {
+                item.style.background = index === selectedSuggestionIndex ? '#f0f0f0' : 'white';
+            });
+        }
+
+        function selectSuggestion(suggestion) {
+            document.getElementById('filterInput').value = suggestion;
+            document.getElementById('autocompleteDropdown').style.display = 'none';
+            addFilter();
         }
 
         function addFilter() {
@@ -805,6 +890,14 @@
                 alert(`Error deleting image: ${error.message}`);
             }
         }
+
+        document.addEventListener('click', (event) => {
+            const dropdown = document.getElementById('autocompleteDropdown');
+            const filterInput = document.getElementById('filterInput');
+            if (dropdown && filterInput && !filterInput.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
 
         checkAuth();
     </script>
