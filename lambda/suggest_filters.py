@@ -31,6 +31,10 @@ def lambda_handler(event, context):
         if not prefix:
             return {
                 "statusCode": 400,
+                "headers": {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"
+                },
                 "body": json.dumps({"error": "Missing prefix parameter"}),
             }
 
@@ -44,6 +48,10 @@ def lambda_handler(event, context):
 
         return {
             "statusCode": 200,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            },
             "body": json.dumps(suggestions),
         }
 
@@ -51,5 +59,9 @@ def lambda_handler(event, context):
         logger.error(f"Error filtering suggestions: {str(e)}", exc_info=True)
         return {
             "statusCode": 500,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            },
             "body": json.dumps({"error": "Internal server error", "details": str(e)}),
         }
