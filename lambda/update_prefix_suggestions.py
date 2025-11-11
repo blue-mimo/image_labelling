@@ -115,7 +115,7 @@ def _inject_prefixes_into_shorter_dict(current_prefix_dict, shorter_prefix_dict)
 
 def _compute_suggestions(items):
     """Process all labels starting with a given letter."""
-    prefix_dicts = [dict() for _ in range(0, _MAX_PREFIX_LENGTH)]
+    prefix_dicts = [dict() for _ in range(1, _MAX_PREFIX_LENGTH + 1)]
 
     for item in items:
         label_name = item["label_name"]
@@ -133,7 +133,7 @@ def _compute_suggestions(items):
 
         prefix_dict[start_prefix].insert(label_name, count)
 
-    for length in range(_MAX_PREFIX_LENGTH - 1, 1, -1):
+    for length in range(_MAX_PREFIX_LENGTH - 1, 0, -1):
         current_prefix_dict = prefix_dicts[length]
         shorter_prefix_dict = prefix_dicts[length - 1]
 
