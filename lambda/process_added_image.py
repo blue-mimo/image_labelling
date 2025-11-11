@@ -108,13 +108,17 @@ def lambda_handler(event, context):
                     }
                 )
                 
-                # Increment label count
-                counts_table.update_item(
-                    Key={"label_name": label_name},
-                    UpdateExpression="ADD #count :inc",
-                    ExpressionAttributeNames={"#count": "count"},
-                    ExpressionAttributeValues={":inc": 1}
-                )
+                # Increment label count (continue if this fails)
+                try:
+                    counts_table.update_item(
+                        Key={"label_name": label_name},
+                        UpdateExpression="ADD #count :inc",
+                        ExpressionAttributeNames={"#count": "count"},
+                        ExpressionAttributeValues={":inc": 1}
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to update count for label {label_name}: {e}")
+                    # Continue processing other labels
 
             logger.info(f"Labels saved to DynamoDB for image: {image_name}")
 

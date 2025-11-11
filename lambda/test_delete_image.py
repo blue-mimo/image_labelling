@@ -57,8 +57,8 @@ class TestDeleteImage(unittest.TestCase):
         self.assertEqual(body['message'], 'Image test-image.jpg deleted successfully')
         self.assertEqual(body['deleted_labels'], 3)
 
-        # Verify helper functions were called
-        mock_delete_labels.assert_called_once_with(mock_table, 'test-image.jpg')
+        # Verify helper functions were called with both tables
+        mock_delete_labels.assert_called_once_with(mock_table, mock_table, 'test-image.jpg')
         mock_delete_s3.assert_called_once_with(mock_s3_client, 'test-bucket', 'test-image.jpg')
 
     def test_lambda_handler_missing_filename(self):
@@ -137,8 +137,9 @@ class TestDeleteImage(unittest.TestCase):
         mock_context_manager.__enter__ = Mock(return_value=mock_batch)
         mock_context_manager.__exit__ = Mock(return_value=None)
         mock_table.batch_writer.return_value = mock_context_manager
-
-        result = delete_image.delete_image_labels(mock_table, 'test.jpg')
+        
+        mock_counts_table = Mock()
+        result = delete_image.delete_image_labels(mock_table, mock_counts_table, 'test.jpg')
 
         self.assertEqual(result, 2)
         mock_table.query.assert_called_once()
@@ -148,8 +149,9 @@ class TestDeleteImage(unittest.TestCase):
         """Test label deletion when no labels exist."""
         mock_table = Mock()
         mock_table.query.return_value = {'Items': []}
-
-        result = delete_image.delete_image_labels(mock_table, 'test.jpg')
+        
+        mock_counts_table = Mock()
+        result = delete_image.delete_image_labels(mock_table, mock_counts_table, 'test.jpg')
 
         self.assertEqual(result, 0)
         mock_table.batch_writer.assert_not_called()
@@ -273,9 +275,10 @@ class TestDeleteImage(unittest.TestCase):
             'Query'
         )
         mock_table.query.side_effect = error
-
+        
+        mock_counts_table = Mock()
         with self.assertRaises(ClientError):
-            delete_image.delete_image_labels(mock_table, 'test.jpg')
+            delete_image.delete_image_labels(mock_table, mock_counts_table, 'test.jpg')
 
     def test_delete_image_labels_batch_error(self):
         """Test batch writer error in delete_image_labels."""
@@ -290,9 +293,10 @@ class TestDeleteImage(unittest.TestCase):
         mock_context_manager.__enter__ = Mock(return_value=mock_batch)
         mock_context_manager.__exit__ = Mock(return_value=None)
         mock_table.batch_writer.return_value = mock_context_manager
-
+        
+        mock_counts_table = Mock()
         with self.assertRaises(Exception):
-            delete_image.delete_image_labels(mock_table, 'test.jpg')
+            delete_image.delete_image_labels(mock_table, mock_counts_table, 'test.jpg')
 
     def test_lambda_handler_none_path_parameters(self):
         """Test error when pathParameters is None."""
