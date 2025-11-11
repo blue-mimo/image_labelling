@@ -106,6 +106,7 @@ Resources:
                   - dynamodb:BatchWriteItem
                   - dynamodb:Query
                   - dynamodb:Scan
+                  - dynamodb:UpdateItem
                 Resource:
                   - !GetAtt ImageLabelsTable.Arn
                   - !Sub "${ImageLabelsTable.Arn}/index/*"
