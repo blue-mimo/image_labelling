@@ -194,6 +194,15 @@ the web interface.
   - `redeploy_amplify.sh`: Amplify redeployment script
   - `migrate_*.py`: Database migration scripts (legacy)
 - `web/`: Web application
-  - `index.html`: Frontend interface with authentication
+  - `index.html`: Main HTML entry point
+  - `styles.css`: Application styles with purple-blue gradient theme
   - `config.js`: Configuration file (updated during build)
-- `.codecatalyst/`: CI/CD workflows
+  - `js/`: JavaScript modules
+    - `auth.js`: Authentication and session management
+    - `login.js`: Login screen and password reset
+    - `mainApp.js`: Main application screen layout
+    - `imageList.js`: Image list, pagination, and dynamic sizing
+    - `imageDisplay.js`: Image display and deletion
+    - `filters.js`: Filter search and autocomplete
+    - `upload.js`: File upload with drag-and-drop
+    - `utils.js`: Utility functions (logging, colors)
