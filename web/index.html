@@ -363,7 +363,7 @@
         const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
 
         const originalFetch = window.fetch;
-        window.fetch = async function(...args) {
+        window.fetch = async function (...args) {
             const response = await originalFetch(...args);
             if (response.status === 401) {
                 const text = await response.clone().text();
@@ -541,8 +541,8 @@
                             <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.gif" style="display: none;" onchange="handleFileUpload()">
                         </div>
                         <div class="upload-report-area">
-                            <h4>Upload Report</h4>
-                            <div id="uploadReport" class="upload-report">No uploads yet</div>
+                            <h4>Activity Log</h4>
+                            <div id="activityLog" class="upload-report">No activity yet</div>
                         </div>
                     </div>
                 </div>
@@ -563,6 +563,18 @@
         let totalPages = 0;
         let totalImages = 0;
         let resizeObserver = null;
+
+        function logActivity(message, type = 'info') {
+            const log = document.getElementById('activityLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#333';
+            const entry = `<div style="color: ${color}; margin: 5px 0;"><strong>${timestamp}</strong> - ${message}</div>`;
+            if (log.innerHTML === 'No activity yet') {
+                log.innerHTML = entry;
+            } else {
+                log.innerHTML = entry + log.innerHTML;
+            }
+        }
 
         function calculateImagesPerPage() {
             const container = document.getElementById('imageListContainer');
@@ -613,13 +625,14 @@
             } catch (error) {
                 let message = 'Unable to load images. ';
                 if (error.message.includes('401') || error.message.includes('403')) {
-                    message += 'Please log in again.';
+                    message += 'Session expired.';
                 } else if (error.message.includes('NetworkError') || !navigator.onLine) {
-                    message += 'Check your internet connection.';
+                    message += 'Network connection issue.';
                 } else {
-                    message += 'Please try again later.';
+                    message += 'Server error.';
                 }
                 document.getElementById('imageList').innerHTML = message;
+                logActivity(message, 'error');
             }
         }
 
@@ -925,7 +938,7 @@
             event.stopPropagation();
             document.getElementById('uploadArea').style.borderColor = '#ddd';
             document.getElementById('uploadArea').style.backgroundColor = '#f9f9f9';
-            
+
             const files = event.dataTransfer.files;
             if (files.length > 0) {
                 document.getElementById('fileInput').files = files;
@@ -938,16 +951,14 @@
             const files = Array.from(fileInput.files);
             if (files.length === 0) return;
 
-            const reportDiv = document.getElementById('uploadReport');
             const uploadContent = document.getElementById('uploadContent');
             const uploadArea = document.getElementById('uploadArea');
 
             uploadArea.onclick = null;
             uploadContent.innerHTML = '<div class="spinner"></div><div style="margin-top: 10px;">Uploading...</div>';
-            reportDiv.innerHTML = 'Uploading files...';
 
             let successful = 0;
-            let failed = [];
+            let failed = 0;
 
             for (const file of files) {
                 try {
@@ -963,28 +974,33 @@
                     if (response.ok) {
                         successful++;
                     } else {
-                        failed.push(`${file.name}: ${response.status} ${response.statusText}`);
+                        failed++;
+                        if (response.status === 413) {
+                            logActivity(`Upload of ${file.name} failed due to file being too large`, 'error');
+                        } else if (response.status === 401 || response.status === 403) {
+                            logActivity(`Upload of ${file.name} failed due to authentication error`, 'error');
+                        } else {
+                            logActivity(`Upload of ${file.name} failed due to server error`, 'error');
+                        }
                     }
                 } catch (error) {
-                    let errorMsg = `${file.name}: `;
-                    if (error.message.includes('NetworkError')) {
-                        errorMsg += 'Network error - check connection';
-                    } else if (error.message.includes('413')) {
-                        errorMsg += 'File too large';
+                    failed++;
+                    if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+                        logActivity(`Upload of ${file.name} failed due to network error`, 'error');
                     } else {
-                        errorMsg += 'Upload failed - try again';
+                        logActivity(`Upload of ${file.name} failed due to unexpected error`, 'error');
                     }
-                    failed.push(errorMsg);
                 }
             }
 
-            let report = `Upload complete: ${successful} successful`;
-            if (failed.length > 0) {
-                report += `\n\nFailed uploads:\n${failed.join('\n')}`;
+            if (failed > 0) {
+                logActivity(`Failed to upload ${failed} image${failed > 1 ? 's' : ''}`, 'error');
             }
-            reportDiv.innerHTML = `<pre>${report}</pre>`;
+            if (successful > 0) {
+                logActivity(`Uploaded ${successful} image${successful > 1 ? 's' : ''}`, 'success');
+                loadImages();
+            }
 
-            if (successful > 0) loadImages();
             fileInput.value = '';
             uploadArea.onclick = triggerFileUpload;
             uploadContent.innerHTML = `
@@ -1022,13 +1038,13 @@
                         imageDisplay.innerHTML = 'Select an image';
                         labelsDisplay.innerHTML = 'Select an image to view labels';
                     }
+                    logActivity(`Deleted image: ${imageName}`, 'success');
                     loadImages();
                 } else {
-                    const error = await response.json();
-                    alert(`Failed to delete image: ${error.error || 'Unknown error'}`);
+                    logActivity(`Failed to delete image: ${imageName}`, 'error');
                 }
             } catch (error) {
-                alert(`Error deleting image: ${error.message}`);
+                logActivity(`Error deleting image: ${imageName}`, 'error');
             } finally {
                 document.body.removeChild(modal);
             }
