@@ -147,9 +147,19 @@
         }
 
         .upload-area {
-            border: 1px solid #ddd;
-            padding: 15px;
-            text-align: center;
+            background: #f9f9f9;
+            border: 2px dashed #ddd;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: #007cba;
+            background: #f0f8ff;
         }
 
         .upload-report-area {
@@ -298,6 +308,12 @@
             100% {
                 transform: rotate(360deg);
             }
+        }
+
+        .upload-icon {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 15px;
         }
     </style>
 </head>
@@ -475,8 +491,17 @@
                             <div id="imageDisplay">Select an image</div>
                         </div>
                         <div class="labels-table-container" id="labelsDisplay">Select an image to view labels</div>
-                        <div class="upload-area">
-                            <button class="upload-button" onclick="triggerFileUpload()">&uarr; Upload Images</button>
+                        <div class="upload-area" id="uploadArea" onclick="triggerFileUpload()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+                            <div id="uploadContent">
+                                <svg class="upload-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="20" y="35" width="60" height="50" rx="5" fill="none" stroke="#007cba" stroke-width="3"/>
+                                    <path d="M 50 15 L 50 60" stroke="#007cba" stroke-width="3" stroke-linecap="round"/>
+                                    <path d="M 35 30 L 50 15 L 65 30" fill="none" stroke="#007cba" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <circle cx="35" cy="55" r="8" fill="#007cba" opacity="0.3"/>
+                                    <path d="M 30 70 L 40 60 L 50 65 L 65 50 L 75 60 L 75 75 L 25 75 Z" fill="#007cba" opacity="0.3"/>
+                                </svg>
+                                <div>Click or drag files to upload</div>
+                            </div>
                             <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.gif" style="display: none;" onchange="handleFileUpload()">
                         </div>
                         <div class="upload-report-area">
@@ -828,6 +853,9 @@
                 item.classList.toggle('selected', item.dataset.image === imageName);
             });
 
+            document.getElementById('imageDisplay').innerHTML = '<div class="spinner"></div>';
+            document.getElementById('labelsDisplay').innerHTML = '<div class="spinner"></div>';
+
             try {
                 await Promise.all([
                     getAndDisplayLabels(imageName),
@@ -842,16 +870,44 @@
             document.getElementById('fileInput').click();
         }
 
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById('uploadArea').style.borderColor = '#007cba';
+            document.getElementById('uploadArea').style.backgroundColor = '#f0f8ff';
+        }
+
+        function handleDragLeave(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById('uploadArea').style.borderColor = '#ddd';
+            document.getElementById('uploadArea').style.backgroundColor = '#f9f9f9';
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById('uploadArea').style.borderColor = '#ddd';
+            document.getElementById('uploadArea').style.backgroundColor = '#f9f9f9';
+            
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                document.getElementById('fileInput').files = files;
+                handleFileUpload();
+            }
+        }
+
         async function handleFileUpload() {
             const fileInput = document.getElementById('fileInput');
             const files = Array.from(fileInput.files);
             if (files.length === 0) return;
 
             const reportDiv = document.getElementById('uploadReport');
-            const uploadButton = document.querySelector('.upload-button');
+            const uploadContent = document.getElementById('uploadContent');
+            const uploadArea = document.getElementById('uploadArea');
 
-            uploadButton.disabled = true;
-            uploadButton.textContent = 'Uploading...';
+            uploadArea.onclick = null;
+            uploadContent.innerHTML = '<div class="spinner"></div><div style="margin-top: 10px;">Uploading...</div>';
             reportDiv.innerHTML = 'Uploading files...';
 
             let successful = 0;
@@ -894,8 +950,17 @@
 
             if (successful > 0) loadImages();
             fileInput.value = '';
-            uploadButton.disabled = false;
-            uploadButton.innerHTML = '&uarr; Upload Images';
+            uploadArea.onclick = triggerFileUpload;
+            uploadContent.innerHTML = `
+                <svg class="upload-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="20" y="35" width="60" height="50" rx="5" fill="none" stroke="#007cba" stroke-width="3"/>
+                    <path d="M 50 15 L 50 60" stroke="#007cba" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M 35 30 L 50 15 L 65 30" fill="none" stroke="#007cba" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="35" cy="55" r="8" fill="#007cba" opacity="0.3"/>
+                    <path d="M 30 70 L 40 60 L 50 65 L 65 50 L 75 60 L 75 75 L 25 75 Z" fill="#007cba" opacity="0.3"/>
+                </svg>
+                <div>Click or drag files to upload</div>
+            `;
         }
 
         async function deleteImage(imageName) {
