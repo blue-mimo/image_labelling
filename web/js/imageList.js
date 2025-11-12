@@ -1,0 +1,143 @@
+import { authToken } from './auth.js';
+import { selectImage, deleteImage } from './imageDisplay.js';
+import { logActivity } from './utils.js';
+
+export let currentPage = 0;
+export let totalPages = 0;
+export let totalImages = 0;
+export let images = [];
+let resizeObserver = null;
+
+export function calculateImagesPerPage() {
+    const container = document.getElementById('imageListContainer');
+    const header = document.querySelector('.image-list-header');
+    if (!container || !header) return 1;
+
+    const containerStyle = window.getComputedStyle(container);
+    const padding = parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom);
+    const availableHeight = container.clientHeight - header.offsetHeight - padding;
+    const itemHeight = 35;
+    const calculatedItems = Math.floor(availableHeight / itemHeight);
+    return Math.max(1, calculatedItems);
+}
+
+export function setupResizeObserver() {
+    const imageListContainer = document.querySelector('.image-list');
+    if (!imageListContainer) return;
+
+    if (resizeObserver) resizeObserver.disconnect();
+
+    resizeObserver = new ResizeObserver(() => {
+        const newImagesPerPage = calculateImagesPerPage();
+        if (newImagesPerPage !== window.imagesPerPage) {
+            window.imagesPerPage = newImagesPerPage;
+            currentPage = 0;
+            loadImages();
+        }
+    });
+
+    resizeObserver.observe(imageListContainer);
+}
+
+export async function loadImages() {
+    document.getElementById('imageList').innerHTML = 'Loading...';
+    try {
+        const filtersParam = window.activeFilters?.length > 0 ? `&filters=${encodeURIComponent(window.activeFilters.join(','))}` : '';
+        const response = await fetch(`${window.API_BASE}/images?page=${currentPage}&limit=${window.imagesPerPage}${filtersParam}`, {
+            headers: { 'Authorization': authToken }
+        });
+        const data = await response.json();
+        images = data.images;
+        totalPages = data.pagination.totalPages;
+        totalImages = data.pagination.total;
+        displayImageList();
+        updatePagination();
+    } catch (error) {
+        let message = 'Unable to load images. ';
+        if (error.message.includes('401') || error.message.includes('403')) {
+            message += 'Session expired.';
+        } else if (error.message.includes('NetworkError') || !navigator.onLine) {
+            message += 'Network connection issue.';
+        } else {
+            message += 'Server error.';
+        }
+        document.getElementById('imageList').innerHTML = message;
+        logActivity(message, 'error');
+    }
+}
+
+function displayImageList() {
+    const listElement = document.getElementById('imageList');
+    listElement.innerHTML = images.map(image =>
+        `<div class="image-item" data-image="${image}">
+            <span class="image-name">${image}</span>
+            <button class="delete-btn" data-image="${image}" title="Delete image">&times;</button>
+        </div>`
+    ).join('');
+
+    listElement.querySelectorAll('.image-name').forEach(el => {
+        el.addEventListener('click', () => selectImage(el.parentElement.dataset.image));
+    });
+    listElement.querySelectorAll('.delete-btn').forEach(el => {
+        el.addEventListener('click', () => deleteImage(el.dataset.image));
+    });
+
+    const startIndex = currentPage * window.imagesPerPage + 1;
+    const endIndex = Math.min(startIndex + images.length - 1, totalImages);
+    document.getElementById('imageListHeader').textContent = `Images (${startIndex}-${endIndex} of ${totalImages})`;
+
+    if (window.selectedImageName) {
+        if (images.includes(window.selectedImageName)) {
+            document.querySelector(`.image-item[data-image="${window.selectedImageName}"]`)?.classList.add('selected');
+        } else {
+            window.selectedImageName = null;
+            if (window.currentImageUrl) {
+                URL.revokeObjectURL(window.currentImageUrl);
+                window.currentImageUrl = null;
+            }
+            document.getElementById('imageDisplay').innerHTML = 'Select an image';
+            document.getElementById('labelsDisplay').innerHTML = 'Select an image to view labels';
+        }
+    }
+}
+
+function updatePagination() {
+    const paginationElement = document.getElementById('paginationControls');
+
+    if (totalPages <= 1) {
+        paginationElement.innerHTML = `<p>Total: ${totalImages} images</p>`;
+        return;
+    }
+
+    const firstDisabled = currentPage === 0 ? 'disabled' : '';
+    const lastDisabled = currentPage === totalPages - 1 ? 'disabled' : '';
+
+    let controls = `
+        <p>Total: ${totalImages} images</p>
+        <button ${firstDisabled} data-page="0">First</button>
+        <button ${firstDisabled} data-page="${currentPage - 1}">&laquo;</button>
+    `;
+
+    for (let i = 0; i < totalPages; i++) {
+        controls += `<button class="${i === currentPage ? 'active' : ''}" data-page="${i}">${i + 1}</button>`;
+    }
+
+    controls += `
+        <button ${lastDisabled} data-page="${currentPage + 1}">&raquo;</button>
+        <button ${lastDisabled} data-page="${totalPages - 1}">Last</button>
+    `;
+
+    paginationElement.innerHTML = controls;
+    paginationElement.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => changePage(parseInt(btn.dataset.page)));
+    });
+}
+
+function changePage(page) {
+    currentPage = page;
+    loadImages();
+}
+
+export function setupImageList() {
+    document.getElementById('refreshBtn').addEventListener('click', loadImages);
+}
