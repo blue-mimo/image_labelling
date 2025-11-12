@@ -25,21 +25,25 @@ export function calculateImagesPerPage() {
 }
 
 export function setupResizeObserver() {
-    const imageListContainer = document.querySelector('.image-list');
-    if (!imageListContainer) return;
+    const sidebar = document.querySelector('.sidebar');
+    if (!sidebar) return;
 
     if (resizeObserver) resizeObserver.disconnect();
 
+    let rafId;
     resizeObserver = new ResizeObserver(() => {
-        const newImagesPerPage = calculateImagesPerPage();
-        if (newImagesPerPage !== window.imagesPerPage) {
-            window.imagesPerPage = newImagesPerPage;
-            currentPage = 0;
-            loadImages();
-        }
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+            const newImagesPerPage = calculateImagesPerPage();
+            if (newImagesPerPage !== window.imagesPerPage) {
+                window.imagesPerPage = newImagesPerPage;
+                currentPage = 0;
+                loadImages();
+            }
+        });
     });
 
-    resizeObserver.observe(imageListContainer);
+    resizeObserver.observe(sidebar);
 }
 
 export async function loadImages() {
