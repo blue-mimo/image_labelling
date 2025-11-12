@@ -145,4 +145,15 @@ function changePage(page) {
 
 export function setupImageList() {
     document.getElementById('refreshBtn').addEventListener('click', loadImages);
+    initializePagination();
+}
+
+function initializePagination() {
+    const paginationElement = document.getElementById('paginationControls');
+    paginationElement.innerHTML = `
+        <button disabled>|&laquo;</button>
+        <button disabled>&laquo;</button>
+        <button disabled>&raquo;</button>
+        <button disabled>&raquo;|</button>
+    `;
 }
