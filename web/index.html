@@ -362,6 +362,19 @@
         const poolData = { UserPoolId: USER_POOL_ID, ClientId: USER_POOL_CLIENT_ID };
         const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
 
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            const response = await originalFetch(...args);
+            if (response.status === 401) {
+                const text = await response.clone().text();
+                if (text.includes('expired') || text.includes('Unauthorized')) {
+                    alert('Your session has expired. Please log in again.');
+                    logout();
+                }
+            }
+            return response;
+        };
+
         function getConfidenceColor(confidence) {
             if (confidence < 50) {
                 return 'rgb(139, 0, 0)';
