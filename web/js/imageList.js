@@ -9,15 +9,10 @@ export let images = [];
 let resizeObserver = null;
 
 export function calculateImagesPerPage() {
-    const container = document.getElementById('imageListContainer');
-    const header = document.querySelector('.image-list-header');
-    if (!container || !header) return 1;
+    const scrollContainer = document.querySelector('.image-list-scroll');
+    if (!scrollContainer) return 1;
 
-    const containerStyle = window.getComputedStyle(container);
-    const padding = parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom);
-    const headerMargin = parseFloat(window.getComputedStyle(header).marginBottom);
-    const availableHeight = container.clientHeight - header.offsetHeight - padding - headerMargin;
-
+    const availableHeight = scrollContainer.clientHeight;
     const itemHeight = 44;
     const calculatedItems = Math.floor(availableHeight / itemHeight);
     return Math.max(1, calculatedItems);

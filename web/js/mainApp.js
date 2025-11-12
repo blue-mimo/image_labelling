@@ -26,7 +26,9 @@ export function showApp() {
                         <h4 id="imageListHeader">Images</h4>
                         <button class="refresh-btn" id="refreshBtn" title="Refresh image list">&#8635;</button>
                     </div>
-                    <div id="imageList">Loading...</div>
+                    <div class="image-list-scroll">
+                        <div id="imageList">Loading...</div>
+                    </div>
                 </div>
                 <div class="pagination">
                     <div id="paginationControls"></div>
