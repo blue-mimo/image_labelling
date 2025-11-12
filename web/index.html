@@ -141,8 +141,7 @@
         }
 
         .labels-table-container {
-            background: #f5f5f5;
-            padding: 10px;
+            justify-content: center;
             overflow-y: auto;
             border: 1px solid #ddd;
         }
@@ -475,10 +474,7 @@
                         <div class="selected-image">
                             <div id="imageDisplay">Select an image</div>
                         </div>
-                        <div class="labels-table-container">
-                            <h4>Labels</h4>
-                            <div id="labelsDisplay">Select an image to view labels</div>
-                        </div>
+                        <div class="labels-table-container" id="labelsDisplay">Select an image to view labels</div>
                         <div class="upload-area">
                             <button class="upload-button" onclick="triggerFileUpload()">&uarr; Upload Images</button>
                             <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.gif" style="display: none;" onchange="handleFileUpload()">
