@@ -16,7 +16,7 @@ export function calculateImagesPerPage() {
     const containerStyle = window.getComputedStyle(container);
     const padding = parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom);
     const availableHeight = container.clientHeight - header.offsetHeight - padding;
-    const itemHeight = 35;
+    const itemHeight = 44;
     const calculatedItems = Math.floor(availableHeight / itemHeight);
     return Math.max(1, calculatedItems);
 }
