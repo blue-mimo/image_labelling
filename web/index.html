@@ -8,7 +8,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             margin: 0;
             padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #e9ecef;
             min-height: 100vh;
         }
 
@@ -483,20 +483,20 @@
 
         function showLogin() {
             document.getElementById('app').innerHTML = `
-                <div style="max-width: 400px; margin: 100px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
-                    <h2>Image Labeling - Login</h2>
+                <div style="max-width: 400px; margin: 100px auto; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                    <h2 style="color: white; margin-top: 0;">Image Labeling - Login</h2>
                     <form onsubmit="login(event)">
-                        <div style="margin: 10px 0;">
-                            <label>Email:</label><br>
-                            <input type="email" id="email" required style="width: 100%; padding: 8px; margin: 5px 0;">
+                        <div style="margin: 15px 0;">
+                            <label style="color: white; font-size: 14px;">Email:</label><br>
+                            <input type="email" id="email" required style="width: 100%; padding: 10px; margin: 8px 0; background: rgba(255,255,255,0.9); border: none; border-radius: 6px; box-sizing: border-box;">
                         </div>
-                        <div style="margin: 10px 0;">
-                            <label>Password:</label><br>
-                            <input type="password" id="password" required style="width: 100%; padding: 8px; margin: 5px 0;">
+                        <div style="margin: 15px 0;">
+                            <label style="color: white; font-size: 14px;">Password:</label><br>
+                            <input type="password" id="password" required style="width: 100%; padding: 10px; margin: 8px 0; background: rgba(255,255,255,0.9); border: none; border-radius: 6px; box-sizing: border-box;">
                         </div>
-                        <button type="submit" style="width: 100%; padding: 10px; background: #007cba; color: white; border: none; border-radius: 3px;">Login</button>
+                        <button type="submit" style="width: 100%; padding: 12px; background: white; color: #667eea; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 10px;">Login</button>
                     </form>
-                    <div id="loginError" style="color: red; margin-top: 10px;"></div>
+                    <div id="loginError" style="color: #ffe0e0; margin-top: 15px; font-size: 14px;"></div>
                 </div>
             `;
         }
@@ -528,17 +528,17 @@
 
         function showNewPasswordForm() {
             document.getElementById('app').innerHTML = `
-                <div style="max-width: 400px; margin: 100px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
-                    <h2>Set New Password</h2>
-                    <p>Please set a new password for your account.</p>
+                <div style="max-width: 400px; margin: 100px auto; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                    <h2 style="color: white; margin-top: 0;">Set New Password</h2>
+                    <p style="color: rgba(255,255,255,0.9);">Please set a new password for your account.</p>
                     <form onsubmit="setNewPassword(event)">
-                        <div style="margin: 10px 0;">
-                            <label>New Password:</label><br>
-                            <input type="password" id="newPassword" required style="width: 100%; padding: 8px; margin: 5px 0;">
+                        <div style="margin: 15px 0;">
+                            <label style="color: white; font-size: 14px;">New Password:</label><br>
+                            <input type="password" id="newPassword" required style="width: 100%; padding: 10px; margin: 8px 0; background: rgba(255,255,255,0.9); border: none; border-radius: 6px; box-sizing: border-box;">
                         </div>
-                        <button type="submit" style="width: 100%; padding: 10px; background: #007cba; color: white; border: none; border-radius: 3px;">Set Password</button>
+                        <button type="submit" style="width: 100%; padding: 12px; background: white; color: #667eea; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 10px;">Set Password</button>
                     </form>
-                    <div id="passwordError" style="color: red; margin-top: 10px;"></div>
+                    <div id="passwordError" style="color: #ffe0e0; margin-top: 15px; font-size: 14px;"></div>
                 </div>
             `;
         }
