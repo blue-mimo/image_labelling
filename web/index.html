@@ -10,16 +10,27 @@
         }
 
         .container {
-            display: grid;
-            grid-template-columns: 300px 1fr 1fr;
-            grid-template-rows: auto auto 1fr auto;
+            display: flex;
             gap: 20px;
-            height: 80vh;
+            height: 85vh;
+        }
+
+        .sidebar {
+            display: grid;
+            grid-template-rows: auto auto 1fr auto;
+            gap: 10px;
+            width: 300px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 20px;
+            flex: 1;
         }
 
         .filter-search {
-            grid-column: 1;
-            grid-row: 1;
             padding: 10px;
             border: 1px solid #ddd;
         }
@@ -53,8 +64,6 @@
         }
 
         .active-filters {
-            grid-column: 1;
-            grid-row: 2;
             padding: 10px;
             border: 1px solid #ddd;
             background: #f9f9f9;
@@ -78,10 +87,9 @@
         }
 
         .image-list {
-            grid-column: 1;
-            grid-row: 3;
-            height: 403px;
-            overflow-y: hidden;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
         }
 
         .image-list-header {
@@ -107,12 +115,9 @@
         }
 
         .pagination {
-            grid-column: 1;
-            grid-row: 4;
-            padding: 2px;
+            padding: 10px;
             text-align: center;
             border: 1px solid #ddd;
-            height: 60px;
             font-size: 12px;
         }
 
@@ -128,8 +133,6 @@
         }
 
         .selected-image {
-            grid-column: 2;
-            grid-row: 1 / 3;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -138,24 +141,31 @@
         }
 
         .labels-table-container {
-            grid-column: 3;
-            grid-row: 1 / 3;
-            background: #f5f5f5;
-            padding: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             overflow-y: auto;
-        }
-
-        .upload-area {
-            grid-column: 2;
-            grid-row: 3 / 5;
             border: 1px solid #ddd;
-            padding: 15px;
             text-align: center;
         }
 
+        .upload-area {
+            background: #f9f9f9;
+            border: 2px dashed #ddd;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: #007cba;
+            background: #f0f8ff;
+        }
+
         .upload-report-area {
-            grid-column: 3;
-            grid-row: 3 / 5;
             border: 1px solid #ddd;
             padding: 15px;
             overflow-y: auto;
@@ -302,6 +312,32 @@
                 transform: rotate(360deg);
             }
         }
+
+        .upload-icon {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 15px;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 5px;
+            text-align: center;
+        }
     </style>
 </head>
 
@@ -325,6 +361,19 @@
 
         const poolData = { UserPoolId: USER_POOL_ID, ClientId: USER_POOL_CLIENT_ID };
         const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+
+        const originalFetch = window.fetch;
+        window.fetch = async function (...args) {
+            const response = await originalFetch(...args);
+            if (response.status === 401) {
+                const text = await response.clone().text();
+                if (text.includes('expired') || text.includes('Unauthorized')) {
+                    alert('Your session has expired. Please log in again.');
+                    logout();
+                }
+            }
+            return response;
+        };
 
         function getConfidenceColor(confidence) {
             if (confidence < 50) {
@@ -451,52 +500,115 @@
                     <button onclick="logout()" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 3px;">Logout</button>
                 </div>
                 <div class="container">
-                    <div class="filter-search" style="position: relative;">
-                        <h4>Filter Search Box</h4>
-                        <input type="text" id="filterInput" placeholder="Search labels..." oninput="handleFilterInput(event)" onkeydown="handleFilterKeydown(event)">
-                        <div id="autocompleteDropdown" class="autocomplete-dropdown" style="display: none;"></div>
-                        <button onclick="addFilter()" style="margin-top: 5px; padding: 5px 10px;">Add Filter</button>
-                    </div>
-                    <div class="active-filters">
-                        <h4>Active Filters</h4>
-                        <div id="activeFilters">No filters active</div>
-                    </div>
-                    <div class="image-list">
-                        <div class="image-list-header">
-                            <h4 id="imageListHeader">Images</h4>
-                            <button class="refresh-btn" onclick="loadImages()" title="Refresh image list">&#8635;</button>
+                    <div class="sidebar">
+                        <div class="filter-search" style="position: relative;">
+                            <h4>Filter Search Box</h4>
+                            <input type="text" id="filterInput" placeholder="Search labels..." oninput="handleFilterInput(event)" onkeydown="handleFilterKeydown(event)">
+                            <div id="autocompleteDropdown" class="autocomplete-dropdown" style="display: none;"></div>
+                            <button onclick="addFilter()" style="margin-top: 5px; padding: 5px 10px;">Add Filter</button>
                         </div>
-                        <div id="imageList">Loading...</div>
+                        <div class="active-filters">
+                            <h4>Active Filters</h4>
+                            <div id="activeFilters">No filters active</div>
+                        </div>
+                        <div class="image-list" id=imageListContainer>
+                            <div class="image-list-header">
+                                <h4 id="imageListHeader">Images</h4>
+                                <button class="refresh-btn" onclick="loadImages()" title="Refresh image list">&#8635;</button>
+                            </div>
+                            <div id="imageList">Loading...</div>
+                        </div>
+                        <div class="pagination">
+                            <div id="paginationControls"></div>
+                        </div>
                     </div>
-                    <div class="pagination">
-                        <div id="paginationControls"></div>
-                    </div>
-                    <div class="selected-image">
-                        <div id="imageDisplay">Select an image</div>
-                    </div>
-                    <div class="labels-table-container">
-                        <h4>Labels</h4>
-                        <div id="labelsDisplay">Select an image to view labels</div>
-                    </div>
-                    <div class="upload-area">
-                        <button class="upload-button" onclick="triggerFileUpload()">&uarr; Upload Images</button>
-                        <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.gif" style="display: none;" onchange="handleFileUpload()">
-                    </div>
-                    <div class="upload-report-area">
-                        <h4>Upload Report</h4>
-                        <div id="uploadReport" class="upload-report">No uploads yet</div>
+                    <div class="main-content">
+                        <div class="selected-image">
+                            <div id="imageDisplay">Select an image</div>
+                        </div>
+                        <div class="labels-table-container" id="labelsDisplay">Select an image to view labels</div>
+                        <div class="upload-area" id="uploadArea" onclick="triggerFileUpload()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+                            <div id="uploadContent">
+                                <svg class="upload-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="20" y="35" width="60" height="50" rx="5" fill="none" stroke="#007cba" stroke-width="3"/>
+                                    <path d="M 50 15 L 50 60" stroke="#007cba" stroke-width="3" stroke-linecap="round"/>
+                                    <path d="M 35 30 L 50 15 L 65 30" fill="none" stroke="#007cba" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <circle cx="35" cy="55" r="8" fill="#007cba" opacity="0.3"/>
+                                    <path d="M 30 70 L 40 60 L 50 65 L 65 50 L 75 60 L 75 75 L 25 75 Z" fill="#007cba" opacity="0.3"/>
+                                </svg>
+                                <div>Click or drag files to upload</div>
+                            </div>
+                            <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.gif" style="display: none;" onchange="handleFileUpload()">
+                        </div>
+                        <div class="upload-report-area">
+                            <h4>Activity Log</h4>
+                            <div id="activityLog" class="upload-report">No activity yet</div>
+                        </div>
                     </div>
                 </div>
             `;
+
+            // Setup resize observer after DOM is ready
+            setTimeout(() => {
+                imagesPerPage = calculateImagesPerPage();
+                setupResizeObserver();
+            }, 100);
         }
 
         let currentPage = 0;
-        const imagesPerPage = 10;
+        let imagesPerPage = 10;
         let activeFilters = [];
         let imageLabels = {};
         let currentImageUrl = null;
         let totalPages = 0;
         let totalImages = 0;
+        let resizeObserver = null;
+        let selectedImageName = null;
+
+        function logActivity(message, type = 'info') {
+            const log = document.getElementById('activityLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#333';
+            const entry = `<div style="color: ${color}; margin: 5px 0;"><strong>${timestamp}</strong> - ${message}</div>`;
+            if (log.innerHTML === 'No activity yet') {
+                log.innerHTML = entry;
+            } else {
+                log.innerHTML = entry + log.innerHTML;
+            }
+        }
+
+        function calculateImagesPerPage() {
+            const container = document.getElementById('imageListContainer');
+            const header = document.querySelector('.image-list-header');
+            if (!container || !header) return 1;
+
+            const containerStyle = window.getComputedStyle(container);
+            const padding = parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom);
+            const availableHeight = container.clientHeight - header.offsetHeight - padding;
+            const itemHeight = 35; // 32px height + 3px margin
+            const calculatedItems = Math.floor(availableHeight / itemHeight);
+            return Math.max(1, calculatedItems);
+        }
+
+        function setupResizeObserver() {
+            const imageListContainer = document.querySelector('.image-list');
+            if (!imageListContainer) return;
+
+            if (resizeObserver) {
+                resizeObserver.disconnect();
+            }
+
+            resizeObserver = new ResizeObserver(() => {
+                const newImagesPerPage = calculateImagesPerPage();
+                if (newImagesPerPage !== imagesPerPage) {
+                    imagesPerPage = newImagesPerPage;
+                    currentPage = 0;
+                    loadImages();
+                }
+            });
+
+            resizeObserver.observe(imageListContainer);
+        }
 
         async function loadImages() {
             document.getElementById('imageList').innerHTML = 'Loading...';
@@ -514,13 +626,14 @@
             } catch (error) {
                 let message = 'Unable to load images. ';
                 if (error.message.includes('401') || error.message.includes('403')) {
-                    message += 'Please log in again.';
+                    message += 'Session expired.';
                 } else if (error.message.includes('NetworkError') || !navigator.onLine) {
-                    message += 'Check your internet connection.';
+                    message += 'Network connection issue.';
                 } else {
-                    message += 'Please try again later.';
+                    message += 'Server error.';
                 }
                 document.getElementById('imageList').innerHTML = message;
+                logActivity(message, 'error');
             }
         }
 
@@ -533,11 +646,24 @@
                 </div>`
             ).join('');
 
-            // Update header with image range
             const startIndex = currentPage * imagesPerPage + 1;
             const endIndex = Math.min(startIndex + images.length - 1, totalImages);
             const headerElement = document.getElementById('imageListHeader');
             headerElement.textContent = `Images (${startIndex}-${endIndex} of ${totalImages})`;
+
+            if (selectedImageName) {
+                if (images.includes(selectedImageName)) {
+                    document.querySelector(`.image-item[data-image="${selectedImageName}"]`)?.classList.add('selected');
+                } else {
+                    selectedImageName = null;
+                    if (currentImageUrl) {
+                        URL.revokeObjectURL(currentImageUrl);
+                        currentImageUrl = null;
+                    }
+                    document.getElementById('imageDisplay').innerHTML = 'Select an image';
+                    document.getElementById('labelsDisplay').innerHTML = 'Select an image to view labels';
+                }
+            }
         }
 
         function updatePagination() {
@@ -786,9 +912,13 @@
                 currentImageUrl = null;
             }
 
+            selectedImageName = imageName;
             document.querySelectorAll('.image-item').forEach(item => {
                 item.classList.toggle('selected', item.dataset.image === imageName);
             });
+
+            document.getElementById('imageDisplay').innerHTML = '<div class="spinner"></div>';
+            document.getElementById('labelsDisplay').innerHTML = '<div class="spinner"></div>';
 
             try {
                 await Promise.all([
@@ -804,20 +934,46 @@
             document.getElementById('fileInput').click();
         }
 
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById('uploadArea').style.borderColor = '#007cba';
+            document.getElementById('uploadArea').style.backgroundColor = '#f0f8ff';
+        }
+
+        function handleDragLeave(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById('uploadArea').style.borderColor = '#ddd';
+            document.getElementById('uploadArea').style.backgroundColor = '#f9f9f9';
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById('uploadArea').style.borderColor = '#ddd';
+            document.getElementById('uploadArea').style.backgroundColor = '#f9f9f9';
+
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                document.getElementById('fileInput').files = files;
+                handleFileUpload();
+            }
+        }
+
         async function handleFileUpload() {
             const fileInput = document.getElementById('fileInput');
             const files = Array.from(fileInput.files);
             if (files.length === 0) return;
 
-            const reportDiv = document.getElementById('uploadReport');
-            const uploadButton = document.querySelector('.upload-button');
+            const uploadContent = document.getElementById('uploadContent');
+            const uploadArea = document.getElementById('uploadArea');
 
-            uploadButton.disabled = true;
-            uploadButton.textContent = 'Uploading...';
-            reportDiv.innerHTML = 'Uploading files...';
+            uploadArea.onclick = null;
+            uploadContent.innerHTML = '<div class="spinner"></div><div style="margin-top: 10px;">Uploading...</div>';
 
             let successful = 0;
-            let failed = [];
+            let failed = 0;
 
             for (const file of files) {
                 try {
@@ -833,37 +989,56 @@
                     if (response.ok) {
                         successful++;
                     } else {
-                        failed.push(`${file.name}: ${response.status} ${response.statusText}`);
+                        failed++;
+                        if (response.status === 413) {
+                            logActivity(`Upload of ${file.name} failed due to file being too large`, 'error');
+                        } else if (response.status === 401 || response.status === 403) {
+                            logActivity(`Upload of ${file.name} failed due to authentication error`, 'error');
+                        } else {
+                            logActivity(`Upload of ${file.name} failed due to server error`, 'error');
+                        }
                     }
                 } catch (error) {
-                    let errorMsg = `${file.name}: `;
-                    if (error.message.includes('NetworkError')) {
-                        errorMsg += 'Network error - check connection';
-                    } else if (error.message.includes('413')) {
-                        errorMsg += 'File too large';
+                    failed++;
+                    if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+                        logActivity(`Upload of ${file.name} failed due to network error`, 'error');
                     } else {
-                        errorMsg += 'Upload failed - try again';
+                        logActivity(`Upload of ${file.name} failed due to unexpected error`, 'error');
                     }
-                    failed.push(errorMsg);
                 }
             }
 
-            let report = `Upload complete: ${successful} successful`;
-            if (failed.length > 0) {
-                report += `\n\nFailed uploads:\n${failed.join('\n')}`;
+            if (failed > 0) {
+                logActivity(`Failed to upload ${failed} image${failed > 1 ? 's' : ''}`, 'error');
             }
-            reportDiv.innerHTML = `<pre>${report}</pre>`;
+            if (successful > 0) {
+                logActivity(`Uploaded ${successful} image${successful > 1 ? 's' : ''}`, 'success');
+                loadImages();
+            }
 
-            if (successful > 0) loadImages();
             fileInput.value = '';
-            uploadButton.disabled = false;
-            uploadButton.innerHTML = '&uarr; Upload Images';
+            uploadArea.onclick = triggerFileUpload;
+            uploadContent.innerHTML = `
+                <svg class="upload-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="20" y="35" width="60" height="50" rx="5" fill="none" stroke="#007cba" stroke-width="3"/>
+                    <path d="M 50 15 L 50 60" stroke="#007cba" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M 35 30 L 50 15 L 65 30" fill="none" stroke="#007cba" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="35" cy="55" r="8" fill="#007cba" opacity="0.3"/>
+                    <path d="M 30 70 L 40 60 L 50 65 L 65 50 L 75 60 L 75 75 L 25 75 Z" fill="#007cba" opacity="0.3"/>
+                </svg>
+                <div>Click or drag files to upload</div>
+            `;
         }
 
         async function deleteImage(imageName) {
             if (!confirm(`Are you sure you want to delete "${imageName}"?\n\nThis action cannot be undone.`)) {
                 return;
             }
+
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = '<div class="modal-content"><div class="spinner"></div><div style="margin-top: 15px;">Deleting image...</div></div>';
+            document.body.appendChild(modal);
 
             try {
                 const response = await fetch(`${API_BASE}/image/${imageName}`, {
@@ -872,22 +1047,24 @@
                 });
 
                 if (response.ok) {
-                    // Clear selected image if it was deleted
-                    const imageDisplay = document.getElementById('imageDisplay');
-                    const labelsDisplay = document.getElementById('labelsDisplay');
-                    if (imageDisplay.querySelector('img')?.src.includes(imageName)) {
-                        imageDisplay.innerHTML = 'Select an image';
-                        labelsDisplay.innerHTML = 'Select an image to view labels';
+                    if (selectedImageName === imageName) {
+                        selectedImageName = null;
+                        if (currentImageUrl) {
+                            URL.revokeObjectURL(currentImageUrl);
+                            currentImageUrl = null;
+                        }
+                        document.getElementById('imageDisplay').innerHTML = 'Select an image';
+                        document.getElementById('labelsDisplay').innerHTML = 'Select an image to view labels';
                     }
-                    
-                    // Reload the image list
+                    logActivity(`Deleted image: ${imageName}`, 'success');
                     loadImages();
                 } else {
-                    const error = await response.json();
-                    alert(`Failed to delete image: ${error.error || 'Unknown error'}`);
+                    logActivity(`Failed to delete image: ${imageName}`, 'error');
                 }
             } catch (error) {
-                alert(`Error deleting image: ${error.message}`);
+                logActivity(`Error deleting image: ${imageName}`, 'error');
+            } finally {
+                document.body.removeChild(modal);
             }
         }
 
