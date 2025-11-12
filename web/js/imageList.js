@@ -105,7 +105,7 @@ function updatePagination() {
     const paginationElement = document.getElementById('paginationControls');
 
     if (totalPages <= 1) {
-        paginationElement.innerHTML = `<p>Total: ${totalImages} images</p>`;
+        paginationElement.innerHTML = '';
         return;
     }
 
@@ -113,7 +113,6 @@ function updatePagination() {
     const lastDisabled = currentPage === totalPages - 1 ? 'disabled' : '';
 
     let controls = `
-        <p>Total: ${totalImages} images</p>
         <button ${firstDisabled} data-page="0">First</button>
         <button ${firstDisabled} data-page="${currentPage - 1}">&laquo;</button>
     `;

@@ -167,11 +167,7 @@ body {
     background: rgba(255,255,255,0.9);
     border-radius: 8px;
     font-size: 12px;
-}
-
-.pagination p {
-    margin: 2px 0;
-    font-size: 11px;
+    white-space: nowrap;
 }
 
 .pagination button {
