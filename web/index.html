@@ -318,6 +318,26 @@
             height: 80px;
             margin-bottom: 15px;
         }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 5px;
+            text-align: center;
+        }
     </style>
 </head>
 
@@ -971,6 +991,11 @@
                 return;
             }
 
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = '<div class="modal-content"><div class="spinner"></div><div style="margin-top: 15px;">Deleting image...</div></div>';
+            document.body.appendChild(modal);
+
             try {
                 const response = await fetch(`${API_BASE}/image/${imageName}`, {
                     method: 'DELETE',
@@ -978,15 +1003,12 @@
                 });
 
                 if (response.ok) {
-                    // Clear selected image if it was deleted
                     const imageDisplay = document.getElementById('imageDisplay');
                     const labelsDisplay = document.getElementById('labelsDisplay');
                     if (imageDisplay.querySelector('img')?.src.includes(imageName)) {
                         imageDisplay.innerHTML = 'Select an image';
                         labelsDisplay.innerHTML = 'Select an image to view labels';
                     }
-
-                    // Reload the image list
                     loadImages();
                 } else {
                     const error = await response.json();
@@ -994,6 +1016,8 @@
                 }
             } catch (error) {
                 alert(`Error deleting image: ${error.message}`);
+            } finally {
+                document.body.removeChild(modal);
             }
         }
 
