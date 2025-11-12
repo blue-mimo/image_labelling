@@ -17,6 +17,8 @@ application:
 
 ## Architecture
 
+<img src="./doc/architecture_diagram.png" width="100%" alt="Image Labeler Architecture">
+
 ### Storage Layer
 - **S3 Bucket**: Stores uploaded images
   - Bucket name: `bluestone-image-labeling-a08324be2c5f`
