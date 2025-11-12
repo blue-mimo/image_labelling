@@ -474,10 +474,7 @@
                     <div class="selected-image">
                         <div id="imageDisplay">Select an image</div>
                     </div>
-                    <div class="labels-table-container">
-                        <h4>Labels</h4>
-                        <div id="labelsDisplay">Select an image to view labels</div>
-                    </div>
+                    <div class="labels-table-container" id="labelsDisplay">Select an image to view labels</div>
                     <div class="upload-area">
                         <button class="upload-button" onclick="triggerFileUpload()">&uarr; Upload Images</button>
                         <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.gif" style="display: none;" onchange="handleFileUpload()">
@@ -879,7 +876,7 @@
                         imageDisplay.innerHTML = 'Select an image';
                         labelsDisplay.innerHTML = 'Select an image to view labels';
                     }
-                    
+
                     // Reload the image list
                     loadImages();
                 } else {
