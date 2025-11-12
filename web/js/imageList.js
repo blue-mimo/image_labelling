@@ -52,10 +52,15 @@ export function setupResizeObserver() {
     if (resizeObserver) resizeObserver.disconnect();
 
     let rafId;
+    let lastHeight = 0;
     resizeObserver = new ResizeObserver(() => {
         if (rafId) cancelAnimationFrame(rafId);
         rafId = requestAnimationFrame(() => {
             requestAnimationFrame(() => {
+                const currentHeight = container.clientHeight;
+                if (currentHeight === lastHeight) return;
+                lastHeight = currentHeight;
+                
                 const newImagesPerPage = calculateImagesPerPage();
                 if (newImagesPerPage !== window.imagesPerPage) {
                     window.imagesPerPage = newImagesPerPage;
