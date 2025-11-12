@@ -7,7 +7,8 @@ body {
 }
 
 .container {
-    display: flex;
+    display: grid;
+    grid-template-columns: 300px 1fr;
     gap: 20px;
     height: 85vh;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -20,7 +21,6 @@ body {
     display: grid;
     grid-template-rows: auto auto 1fr auto;
     gap: 15px;
-    width: 300px;
 }
 
 .main-content {
@@ -28,7 +28,6 @@ body {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
     gap: 20px;
-    flex: 1;
 }
 
 .filter-search {
