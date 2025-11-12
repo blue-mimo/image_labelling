@@ -6,16 +6,19 @@ body {
     height: 100vh;
     overflow: hidden;
     box-sizing: border-box;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 20px;
 }
 
 .container {
     display: flex;
     gap: 20px;
-    height: calc(100vh - 100px);
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 12px;
     padding: 20px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    min-height: 0;
 }
 
 .sidebar {
