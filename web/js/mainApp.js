@@ -5,7 +5,7 @@ import { setupUpload } from './upload.js';
 
 export function showApp() {
     document.getElementById('app').innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h1 style="margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Image Labeler</h1>
             <button id="logoutBtn" style="padding: 10px 20px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border: none; border-radius: 8px; cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 12px rgba(245,87,108,0.3);">Logout</button>
         </div>
