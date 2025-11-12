@@ -141,6 +141,13 @@ body {
     flex-direction: column;
 }
 
+.image-list-content {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
 .image-list-scroll {
     overflow: hidden;
     flex: 1;

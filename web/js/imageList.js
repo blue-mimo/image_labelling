@@ -9,18 +9,18 @@ export let images = [];
 let resizeObserver = null;
 
 export function calculateImagesPerPage() {
-    const scrollContainer = document.querySelector('.image-list-scroll');
-    if (!scrollContainer) return 1;
+    const container = document.getElementById('imageListContainer');
+    if (!container) return 1;
 
-    const availableHeight = scrollContainer.clientHeight;
+    const availableHeight = container.clientHeight;
     const itemHeight = 44;
     const calculatedItems = Math.floor(availableHeight / itemHeight);
     return Math.max(1, calculatedItems);
 }
 
 export function setupResizeObserver() {
-    const sidebar = document.querySelector('.sidebar');
-    if (!sidebar) return;
+    const container = document.getElementById('imageListContainer');
+    if (!container) return;
 
     if (resizeObserver) resizeObserver.disconnect();
 
@@ -37,7 +37,7 @@ export function setupResizeObserver() {
         });
     });
 
-    resizeObserver.observe(sidebar);
+    resizeObserver.observe(container);
 }
 
 export async function loadImages() {
