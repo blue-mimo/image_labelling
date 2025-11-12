@@ -21,12 +21,16 @@ export function showApp() {
                     <h4>Active Filters</h4>
                     <div id="activeFilters">No filters active</div>
                 </div>
-                <div class="image-list" id="imageListContainer">
+                <div class="image-list">
                     <div class="image-list-header">
                         <h4 id="imageListHeader">Images</h4>
                         <button class="refresh-btn" id="refreshBtn" title="Refresh image list">&#8635;</button>
                     </div>
-                    <div id="imageList">Loading...</div>
+                    <div class="image-list-content" id="imageListContainer">
+                        <div class="image-list-scroll">
+                            <div id="imageList">Loading...</div>
+                        </div>
+                    </div>
                 </div>
                 <div class="pagination">
                     <div id="paginationControls"></div>
@@ -63,8 +67,8 @@ export function showApp() {
     setupFilters();
     setupUpload();
 
-    setTimeout(() => {
+    requestAnimationFrame(() => {
         window.imagesPerPage = calculateImagesPerPage();
         setupResizeObserver();
-    }, 100);
+    });
 }

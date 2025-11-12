@@ -8,35 +8,70 @@ export let totalImages = 0;
 export let images = [];
 let resizeObserver = null;
 
+let cachedItemHeight = null;
+let cachedItemMargin = null;
+
 export function calculateImagesPerPage() {
     const container = document.getElementById('imageListContainer');
-    const header = document.querySelector('.image-list-header');
-    if (!container || !header) return 1;
+    if (!container) return 1;
 
-    const containerStyle = window.getComputedStyle(container);
-    const padding = parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom);
-    const availableHeight = container.clientHeight - header.offsetHeight - padding;
-    const itemHeight = 35;
-    const calculatedItems = Math.floor(availableHeight / itemHeight);
+    const availableHeight = container.clientHeight;
+
+    if (!cachedItemHeight) {
+        const existingItem = document.querySelector('.image-item');
+        const item = existingItem || createTempItem();
+
+        const styles = window.getComputedStyle(item);
+        const height = parseFloat(styles.height);
+        const marginBottom = parseFloat(styles.marginBottom);
+        cachedItemHeight = height;
+        cachedItemMargin = marginBottom;
+
+        if (!existingItem) document.body.removeChild(item);
+    }
+
+    const calculatedItems = Math.floor((availableHeight - cachedItemMargin) /
+        (cachedItemHeight + cachedItemMargin)) || 1;
+
     return Math.max(1, calculatedItems);
 }
 
+function createTempItem() {
+    const tempItem = document.createElement('div');
+    tempItem.className = 'image-item';
+    tempItem.style.visibility = 'hidden';
+    tempItem.style.position = 'absolute';
+    document.body.appendChild(tempItem);
+    return tempItem;
+}
+
 export function setupResizeObserver() {
-    const imageListContainer = document.querySelector('.image-list');
-    if (!imageListContainer) return;
+    const container = document.getElementById('imageListContainer');
+    if (!container) return;
 
     if (resizeObserver) resizeObserver.disconnect();
 
+    let rafId;
+    let lastHeight = 0;
     resizeObserver = new ResizeObserver(() => {
-        const newImagesPerPage = calculateImagesPerPage();
-        if (newImagesPerPage !== window.imagesPerPage) {
-            window.imagesPerPage = newImagesPerPage;
-            currentPage = 0;
-            loadImages();
-        }
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const currentHeight = container.clientHeight;
+                if (currentHeight === lastHeight) return;
+                lastHeight = currentHeight;
+                
+                const newImagesPerPage = calculateImagesPerPage();
+                if (newImagesPerPage !== window.imagesPerPage) {
+                    window.imagesPerPage = newImagesPerPage;
+                    currentPage = 0;
+                    loadImages();
+                }
+            });
+        });
     });
 
-    resizeObserver.observe(imageListContainer);
+    resizeObserver.observe(container);
 }
 
 export async function loadImages() {
@@ -105,26 +140,30 @@ function updatePagination() {
     const paginationElement = document.getElementById('paginationControls');
 
     if (totalPages <= 1) {
-        paginationElement.innerHTML = `<p>Total: ${totalImages} images</p>`;
+        paginationElement.innerHTML = '';
         return;
     }
 
     const firstDisabled = currentPage === 0 ? 'disabled' : '';
     const lastDisabled = currentPage === totalPages - 1 ? 'disabled' : '';
+    const prevDisabled = currentPage < 3 ? 'disabled' : '';
+    const nextDisabled = currentPage >= totalPages - 3 ? 'disabled' : '';
 
     let controls = `
-        <p>Total: ${totalImages} images</p>
-        <button ${firstDisabled} data-page="0">First</button>
-        <button ${firstDisabled} data-page="${currentPage - 1}">&laquo;</button>
+        <button ${firstDisabled} data-page="0">|&laquo;</button>
+        <button ${prevDisabled} data-page="${Math.max(0, currentPage - 3)}">&laquo;</button>
     `;
 
-    for (let i = 0; i < totalPages; i++) {
+    let startPage = Math.max(0, Math.min(currentPage - 1, totalPages - 3));
+    let endPage = Math.min(totalPages, startPage + 3);
+
+    for (let i = startPage; i < endPage; i++) {
         controls += `<button class="${i === currentPage ? 'active' : ''}" data-page="${i}">${i + 1}</button>`;
     }
 
     controls += `
-        <button ${lastDisabled} data-page="${currentPage + 1}">&raquo;</button>
-        <button ${lastDisabled} data-page="${totalPages - 1}">Last</button>
+        <button ${nextDisabled} data-page="${Math.min(totalPages - 1, currentPage + 3)}">&raquo;</button>
+        <button ${lastDisabled} data-page="${totalPages - 1}">&raquo;|</button>
     `;
 
     paginationElement.innerHTML = controls;
@@ -140,4 +179,16 @@ function changePage(page) {
 
 export function setupImageList() {
     document.getElementById('refreshBtn').addEventListener('click', loadImages);
+    initializePagination();
+}
+
+function initializePagination() {
+    const paginationElement = document.getElementById('paginationControls');
+    paginationElement.innerHTML = `
+        <button disabled>|&laquo;</button>
+        <button disabled>&laquo;</button>
+        <button class="active" disabled>1</button>
+        <button disabled>&raquo;</button>
+        <button disabled>&raquo;|</button>
+    `;
 }
