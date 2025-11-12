@@ -459,7 +459,7 @@
                             <h4>Active Filters</h4>
                             <div id="activeFilters">No filters active</div>
                         </div>
-                        <div class="image-list">
+                        <div class="image-list" id=imageListContainer>
                             <div class="image-list-header">
                                 <h4 id="imageListHeader">Images</h4>
                                 <button class="refresh-btn" onclick="loadImages()" title="Refresh image list">&#8635;</button>
@@ -486,15 +486,55 @@
                     </div>
                 </div>
             `;
+
+            // Setup resize observer after DOM is ready
+            setTimeout(() => {
+                imagesPerPage = calculateImagesPerPage();
+                setupResizeObserver();
+            }, 100);
         }
 
         let currentPage = 0;
-        const imagesPerPage = 10;
+        let imagesPerPage = 10;
         let activeFilters = [];
         let imageLabels = {};
         let currentImageUrl = null;
         let totalPages = 0;
         let totalImages = 0;
+        let resizeObserver = null;
+
+        function calculateImagesPerPage() {
+            const container = document.getElementById('imageListContainer');
+            const header = document.querySelector('.image-list-header');
+            if (!container || !header) return 1;
+
+            const containerStyle = window.getComputedStyle(container);
+            const padding = parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom);
+            const availableHeight = container.clientHeight - header.offsetHeight - padding;
+            const itemHeight = 35; // 32px height + 3px margin
+            const calculatedItems = Math.floor(availableHeight / itemHeight);
+            return Math.max(1, calculatedItems);
+        }
+
+        function setupResizeObserver() {
+            const imageListContainer = document.querySelector('.image-list');
+            if (!imageListContainer) return;
+
+            if (resizeObserver) {
+                resizeObserver.disconnect();
+            }
+
+            resizeObserver = new ResizeObserver(() => {
+                const newImagesPerPage = calculateImagesPerPage();
+                if (newImagesPerPage !== imagesPerPage) {
+                    imagesPerPage = newImagesPerPage;
+                    currentPage = 0;
+                    loadImages();
+                }
+            });
+
+            resizeObserver.observe(imageListContainer);
+        }
 
         async function loadImages() {
             document.getElementById('imageList').innerHTML = 'Loading...';
