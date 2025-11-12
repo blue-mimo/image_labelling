@@ -111,19 +111,24 @@ function updatePagination() {
 
     const firstDisabled = currentPage === 0 ? 'disabled' : '';
     const lastDisabled = currentPage === totalPages - 1 ? 'disabled' : '';
+    const prevDisabled = currentPage < 3 ? 'disabled' : '';
+    const nextDisabled = currentPage >= totalPages - 3 ? 'disabled' : '';
 
     let controls = `
-        <button ${firstDisabled} data-page="0">First</button>
-        <button ${firstDisabled} data-page="${currentPage - 1}">&laquo;</button>
+        <button ${firstDisabled} data-page="0">|&laquo;</button>
+        <button ${prevDisabled} data-page="${Math.max(0, currentPage - 3)}">&laquo;</button>
     `;
 
-    for (let i = 0; i < totalPages; i++) {
+    let startPage = Math.max(0, Math.min(currentPage - 1, totalPages - 3));
+    let endPage = Math.min(totalPages, startPage + 3);
+
+    for (let i = startPage; i < endPage; i++) {
         controls += `<button class="${i === currentPage ? 'active' : ''}" data-page="${i}">${i + 1}</button>`;
     }
 
     controls += `
-        <button ${lastDisabled} data-page="${currentPage + 1}">&raquo;</button>
-        <button ${lastDisabled} data-page="${totalPages - 1}">Last</button>
+        <button ${nextDisabled} data-page="${Math.min(totalPages - 1, currentPage + 3)}">&raquo;</button>
+        <button ${lastDisabled} data-page="${totalPages - 1}">&raquo;|</button>
     `;
 
     paginationElement.innerHTML = controls;
