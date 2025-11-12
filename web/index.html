@@ -563,6 +563,7 @@
         let totalPages = 0;
         let totalImages = 0;
         let resizeObserver = null;
+        let selectedImageName = null;
 
         function logActivity(message, type = 'info') {
             const log = document.getElementById('activityLog');
@@ -645,11 +646,24 @@
                 </div>`
             ).join('');
 
-            // Update header with image range
             const startIndex = currentPage * imagesPerPage + 1;
             const endIndex = Math.min(startIndex + images.length - 1, totalImages);
             const headerElement = document.getElementById('imageListHeader');
             headerElement.textContent = `Images (${startIndex}-${endIndex} of ${totalImages})`;
+
+            if (selectedImageName) {
+                if (images.includes(selectedImageName)) {
+                    document.querySelector(`.image-item[data-image="${selectedImageName}"]`)?.classList.add('selected');
+                } else {
+                    selectedImageName = null;
+                    if (currentImageUrl) {
+                        URL.revokeObjectURL(currentImageUrl);
+                        currentImageUrl = null;
+                    }
+                    document.getElementById('imageDisplay').innerHTML = 'Select an image';
+                    document.getElementById('labelsDisplay').innerHTML = 'Select an image to view labels';
+                }
+            }
         }
 
         function updatePagination() {
@@ -898,6 +912,7 @@
                 currentImageUrl = null;
             }
 
+            selectedImageName = imageName;
             document.querySelectorAll('.image-item').forEach(item => {
                 item.classList.toggle('selected', item.dataset.image === imageName);
             });
@@ -1032,11 +1047,14 @@
                 });
 
                 if (response.ok) {
-                    const imageDisplay = document.getElementById('imageDisplay');
-                    const labelsDisplay = document.getElementById('labelsDisplay');
-                    if (imageDisplay.querySelector('img')?.src.includes(imageName)) {
-                        imageDisplay.innerHTML = 'Select an image';
-                        labelsDisplay.innerHTML = 'Select an image to view labels';
+                    if (selectedImageName === imageName) {
+                        selectedImageName = null;
+                        if (currentImageUrl) {
+                            URL.revokeObjectURL(currentImageUrl);
+                            currentImageUrl = null;
+                        }
+                        document.getElementById('imageDisplay').innerHTML = 'Select an image';
+                        document.getElementById('labelsDisplay').innerHTML = 'Select an image to view labels';
                     }
                     logActivity(`Deleted image: ${imageName}`, 'success');
                     loadImages();
