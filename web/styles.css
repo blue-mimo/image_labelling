@@ -8,7 +8,7 @@ body {
 
 .container {
     display: grid;
-    grid-template-columns: 300px 1fr;
+    grid-template-columns: minmax(300px, auto) 1fr;
     gap: 20px;
     height: 85vh;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -21,6 +21,7 @@ body {
     display: grid;
     grid-template-rows: auto auto 1fr auto;
     gap: 15px;
+    min-width: 0;
 }
 
 .main-content {
