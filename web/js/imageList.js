@@ -8,14 +8,41 @@ export let totalImages = 0;
 export let images = [];
 let resizeObserver = null;
 
+let cachedItemHeight = null;
+let cachedItemMargin = null;
+
 export function calculateImagesPerPage() {
     const container = document.getElementById('imageListContainer');
     if (!container) return 1;
 
     const availableHeight = container.clientHeight;
-    const itemHeight = 44;
-    const calculatedItems = Math.floor(availableHeight / itemHeight);
+
+    if (!cachedItemHeight) {
+        const existingItem = document.querySelector('.image-item');
+        const item = existingItem || createTempItem();
+
+        const styles = window.getComputedStyle(item);
+        const height = parseFloat(styles.height);
+        const marginBottom = parseFloat(styles.marginBottom);
+        cachedItemHeight = height;
+        cachedItemMargin = marginBottom;
+
+        if (!existingItem) document.body.removeChild(item);
+    }
+
+    const calculatedItems = Math.floor((availableHeight - cachedItemMargin) /
+        (cachedItemHeight + cachedItemMargin)) || 1;
+
     return Math.max(1, calculatedItems);
+}
+
+function createTempItem() {
+    const tempItem = document.createElement('div');
+    tempItem.className = 'image-item';
+    tempItem.style.visibility = 'hidden';
+    tempItem.style.position = 'absolute';
+    document.body.appendChild(tempItem);
+    return tempItem;
 }
 
 export function setupResizeObserver() {
@@ -153,6 +180,7 @@ function initializePagination() {
     paginationElement.innerHTML = `
         <button disabled>|&laquo;</button>
         <button disabled>&laquo;</button>
+        <button class="active" disabled>1</button>
         <button disabled>&raquo;</button>
         <button disabled>&raquo;|</button>
     `;
