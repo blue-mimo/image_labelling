@@ -15,11 +15,10 @@ export function calculateImagesPerPage() {
 
     const containerStyle = window.getComputedStyle(container);
     const padding = parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom);
-    const availableHeight = container.clientHeight - header.offsetHeight - padding;
+    const headerMargin = parseFloat(window.getComputedStyle(header).marginBottom);
+    const availableHeight = container.clientHeight - header.offsetHeight - padding - headerMargin;
 
-    const testItem = document.querySelector('.image-item');
-    const itemHeight = testItem ? testItem.offsetHeight + parseFloat(window.getComputedStyle(testItem).marginTop) + parseFloat(window.getComputedStyle(testItem).marginBottom) : 36;
-
+    const itemHeight = 44;
     const calculatedItems = Math.floor(availableHeight / itemHeight);
     return Math.max(1, calculatedItems);
 }
