@@ -55,12 +55,14 @@ export function setupResizeObserver() {
     resizeObserver = new ResizeObserver(() => {
         if (rafId) cancelAnimationFrame(rafId);
         rafId = requestAnimationFrame(() => {
-            const newImagesPerPage = calculateImagesPerPage();
-            if (newImagesPerPage !== window.imagesPerPage) {
-                window.imagesPerPage = newImagesPerPage;
-                currentPage = 0;
-                loadImages();
-            }
+            requestAnimationFrame(() => {
+                const newImagesPerPage = calculateImagesPerPage();
+                if (newImagesPerPage !== window.imagesPerPage) {
+                    window.imagesPerPage = newImagesPerPage;
+                    currentPage = 0;
+                    loadImages();
+                }
+            });
         });
     });
 
